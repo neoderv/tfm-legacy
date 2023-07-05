@@ -1,5 +1,6 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
 import { generateTerrain } from './terrain.js';
+import { addInventory } from './inventory.js';
 
 const CHUNK_SIZE = 16;
 const RENDER_DIAMETER = 5; // This must be an odd number.
@@ -23,13 +24,16 @@ let boundModulo = (a,b) => {
 }
 
 let chunkPos = (player, pos, chunks, newData) => {
-    let a = Math.floor(pos[0] / CHUNK_SIZE) + RENDER_RADIUS - Math.floor(player[0] / CHUNK_SIZE) +
-        (Math.floor(pos[1] / CHUNK_SIZE) + RENDER_RADIUS - Math.floor(player[1] / CHUNK_SIZE)) * RENDER_DIAMETER;
-
     let x = pos[0];
     let y = pos[1];
 
-    let r = boundModulo(x,CHUNK_SIZE) + boundModulo(y,CHUNK_SIZE) * CHUNK_SIZE
+    let xMod = boundModulo(x,CHUNK_SIZE);
+    let yMod = boundModulo(y,CHUNK_SIZE);
+
+    let a = Math.round((pos[0] - xMod) / CHUNK_SIZE) + RENDER_RADIUS - Math.floor(player[0] / CHUNK_SIZE) +
+        (Math.round((pos[1] - yMod) / CHUNK_SIZE) + RENDER_RADIUS - Math.floor(player[1] / CHUNK_SIZE)) * RENDER_DIAMETER;
+
+    let r = xMod + yMod * CHUNK_SIZE
 
     if (newData || newData === 0) {
         chunks[a].chunk[r] = newData;
@@ -63,12 +67,11 @@ let loadChunk = (pos) => {
     return chunk;
 }
 
-// TODO: fix collision
 let tick = () => {
     vel[0] /= 1.09;
     vel[1] /= 1.02;
 
-    vel[0] -= ((keys['a'] ? 0.05 : 0) - (keys['d'] ? 0.05 : 0));
+    vel[0] -= ((keys['a'] ? 0.02 : 0) - (keys['d'] ? 0.02 : 0));
     vel[1] += 0.02;
 
     document.querySelector('#text').textContent = `x = ${pos[0]}\ny = ${pos[1]}`
@@ -99,15 +102,12 @@ let tick = () => {
     let ground = ((chunkPos(posTemp, [left2, bottom2], chunks) != 0 ||
         chunkPos(posTemp, [right2, bottom2], chunks) != 0));    
 
-    if (ground && vel[1] <= 0) {
+    if (ground) {
         pos[1] = Math.floor(posTemp[1]);
         
         bottom2 = Math.floor(pos[1] + 1.1);
         top = Math.floor(pos[1] + 0.1);
         top2 = Math.floor(pos[1] - 0.9);
-    }
-
-    if (ground) {
         vel[1] = Math.min(vel[1], 0);
     }
 
@@ -163,7 +163,11 @@ let click = (e) => {
         Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE) ,
     ]
 
-    console.log(chunkPos(pos, offset, chunks, 0));
+    let newBlock = chunkPos(pos, offset, chunks);
+    if (newBlock == 0) return;
+    addInventory(newBlock);
+
+    chunkPos(pos, offset, chunks, 0);
 }
 
 let rightclick = (e) => {
@@ -174,7 +178,7 @@ let rightclick = (e) => {
         Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE) ,
     ]
 
-    console.log(chunkPos(pos, offset, chunks, 2));
+   chunkPos(pos, offset, chunks, 5);
 }
 
 window.addEventListener('keydown', down)

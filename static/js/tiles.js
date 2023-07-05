@@ -28,6 +28,12 @@ const tiles = [
         'name': 'Grass',
         'texture': 'grass',
         'desc': 'Oh no! My dirt is moldy!'
+    },
+    {
+        // 5
+        'name': 'Test',
+        'texture': 'test',
+        'desc': 'Testing...'
     }
 ]
 

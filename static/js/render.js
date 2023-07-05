@@ -9,6 +9,7 @@ let constructUpdates = (tick) => {
     return () => {
         let { chunks, pos, CHUNK_SIZE } = tick();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.imageSmoothingEnabled = false;
 
         chunks.forEach((datWrapper) => {
             datWrapper.chunk.forEach((item, j) => { 
@@ -37,8 +38,6 @@ let resize = () => {
 
 const observer = new ResizeObserver(resize);
 observer.observe(canvas);
-
-ctx.imageSmoothingEnabled = false;
 
 let tileMap = tiles.map(x => {
     let img = new Image();
