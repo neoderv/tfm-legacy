@@ -1,0 +1,19 @@
+:root {
+    font-family: sans-serif;
+}
+
+h1 {
+    font-family: sans-serif;
+    text-align: center;
+}
+
+#canvas {
+    width: 100vw;
+    height: 100vh;
+}
+
+body, #canvas {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
