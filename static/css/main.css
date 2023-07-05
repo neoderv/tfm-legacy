@@ -12,6 +12,8 @@ h1 {
     height: 100vh;
 
     background-color: rgb(161, 210, 230);
+
+    object-fit:cover;
 }
 
 #text {

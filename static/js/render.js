@@ -26,6 +26,7 @@ let constructUpdates = (tick) => {
                 ctx.drawImage(tile,x,y,TILE_SIZE,TILE_SIZE);
             })
         })
+        ctx.drawImage(tileMap[1],canvas.width / 2,canvas.height / 2 - TILE_SIZE,TILE_SIZE,TILE_SIZE*2);
     }
 }
 

@@ -7,9 +7,9 @@ const tiles = [
     },
     {
         // 1
-        'name': 'Test',
-        'texture': 'test',
-        'desc': 'Test2 (why do you have this?)'
+        'name': 'Player',
+        'texture': 'player',
+        'desc': 'what'
     },
     {
         // 2
