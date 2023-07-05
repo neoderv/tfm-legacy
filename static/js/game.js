@@ -3,10 +3,10 @@ import { generateTerrain } from './terrain.js';
 
 const CHUNK_SIZE = 16;
 const RENDER_DIAMETER = 5; // This must be an odd number.
-const RENDER_RADIUS = (RENDER_DIAMETER - 1) / 2;
 const MAX_SAVE = 1000; // TODO: Save chunk data to server
 
 const CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+const RENDER_RADIUS = (RENDER_DIAMETER - 1) / 2;
 const RENDER_AREA = RENDER_DIAMETER * RENDER_DIAMETER;
 
 let save = {};
@@ -37,6 +37,8 @@ let loadChunk = (pos) => {
 let tick = () => {
     pos[0] -= ((keys['a'] ? 0.5 : 0) - (keys['d'] ? 0.5 : 0));
     pos[1] -= ((keys['w'] ? 0.5 : 0) - (keys['s'] ? 0.5 : 0));
+
+    document.querySelector('#text').textContent = `x = ${pos[0]}\ny = ${pos[1]}`
 
     for (let i = 0; i < RENDER_AREA; i++) {
         let chunkPos = [

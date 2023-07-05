@@ -9,7 +9,25 @@ const tiles = [
         // 1
         'name': 'Test',
         'texture': 'test',
-        'desc': 'Test2'
+        'desc': 'Test2 (why do you have this?)'
+    },
+    {
+        // 2
+        'name': 'Dirt',
+        'texture': 'dirt',
+        'desc': 'The soil that composes the earth. Not very edible.'
+    },
+    {
+        // 3
+        'name': 'Stone',
+        'texture': 'stone',
+        'desc': 'Dirt, but gray and hard.'
+    },
+    {
+        // 4
+        'name': 'Grass',
+        'texture': 'grass',
+        'desc': 'Oh no! My dirt is moldy!'
     }
 ]
 

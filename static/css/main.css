@@ -10,10 +10,35 @@ h1 {
 #canvas {
     width: 100vw;
     height: 100vh;
+
+    background-color: rgb(161, 210, 230);
+}
+
+#text {
+    width: min(90vw,750px);
+    height: min-content;
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-weight: bold;
+    user-select: none;
+
+    white-space: pre-wrap;
 }
 
 body, #canvas {
     margin: 0;
     padding: 0;
     overflow: hidden;
+}
+
+.text-wrapper {
+    display: flex;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
 }

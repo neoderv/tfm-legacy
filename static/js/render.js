@@ -1,6 +1,6 @@
 import { tiles } from './tiles.js';
 
-const TILE_SIZE = 64;
+const TILE_SIZE = 32;
 
 const canvas = document.querySelector('#canvas');
 const ctx = canvas.getContext("2d");
@@ -41,7 +41,7 @@ ctx.imageSmoothingEnabled = false;
 
 let tileMap = tiles.map(x => {
     let img = new Image();
-    img.src = `/tile/${x.texture}.png`;
+    img.src = `./tile/${x.texture}.png`;
     return img;
 });
 
