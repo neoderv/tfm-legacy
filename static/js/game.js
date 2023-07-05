@@ -1,6 +1,6 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
 import { generateTerrain } from './terrain.js';
-import { addInventory } from './inventory.js';
+import { addInventory, selectSlot, setInventory, getInventory } from './inventory.js';
 
 const CHUNK_SIZE = 16;
 const RENDER_DIAMETER = 5; // This must be an odd number.
@@ -10,13 +10,26 @@ const CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 const RENDER_RADIUS = (RENDER_DIAMETER - 1) / 2;
 const RENDER_AREA = RENDER_DIAMETER * RENDER_DIAMETER;
 
+const INVENTORY_BINDS = [
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9'
+];
+
 let save = {};
 let pos = [0, 20];
 let vel = [0, 0];
 let chunks = [];
 let keys = {};
+let selectedIndex = 0;
 
-let boundModulo = (a,b) => {
+let boundModulo = (a, b) => {
     let result = Math.round(a % b);
     if (result < 0) result += b;
     if (result >= b) result -= b;
@@ -27,8 +40,8 @@ let chunkPos = (player, pos, chunks, newData) => {
     let x = pos[0];
     let y = pos[1];
 
-    let xMod = boundModulo(x,CHUNK_SIZE);
-    let yMod = boundModulo(y,CHUNK_SIZE);
+    let xMod = boundModulo(x, CHUNK_SIZE);
+    let yMod = boundModulo(y, CHUNK_SIZE);
 
     let a = Math.round((pos[0] - xMod) / CHUNK_SIZE) + RENDER_RADIUS - Math.floor(player[0] / CHUNK_SIZE) +
         (Math.round((pos[1] - yMod) / CHUNK_SIZE) + RENDER_RADIUS - Math.floor(player[1] / CHUNK_SIZE)) * RENDER_DIAMETER;
@@ -67,12 +80,23 @@ let loadChunk = (pos) => {
     return chunk;
 }
 
+// TODO: clean this up
 let tick = () => {
     vel[0] /= 1.09;
     vel[1] /= 1.02;
 
     vel[0] -= ((keys['a'] ? 0.02 : 0) - (keys['d'] ? 0.02 : 0));
     vel[1] += 0.02;
+
+    let binded = false;
+    INVENTORY_BINDS.forEach((bind, i) => {
+        if (keys[bind]) {
+            binded = true;
+            selectedIndex = i;
+        }
+    })
+
+    if (binded) selectSlot(selectedIndex);
 
     document.querySelector('#text').textContent = `x = ${pos[0]}\ny = ${pos[1]}`
 
@@ -100,11 +124,11 @@ let tick = () => {
     let top2 = Math.floor(pos[1] - 0.9);
 
     let ground = ((chunkPos(posTemp, [left2, bottom2], chunks) != 0 ||
-        chunkPos(posTemp, [right2, bottom2], chunks) != 0));    
+        chunkPos(posTemp, [right2, bottom2], chunks) != 0));
 
     if (ground) {
         pos[1] = Math.floor(posTemp[1]);
-        
+
         bottom2 = Math.floor(pos[1] + 1.1);
         top = Math.floor(pos[1] + 0.1);
         top2 = Math.floor(pos[1] - 0.9);
@@ -125,7 +149,7 @@ let tick = () => {
         vel[1] = -0.5;
 
     if ((chunkPos(posTemp, [right, top], chunks) != 0) ||
-        (chunkPos(posTemp, [right, top2], chunks) != 0) || 
+        (chunkPos(posTemp, [right, top2], chunks) != 0) ||
         (chunkPos(posTemp, [right, top2], chunks) != 0) ||
         (chunkPos(posTemp, [left, top], chunks) != 0)) {
         pos[0] = Math.round(posTemp[0]);
@@ -160,7 +184,7 @@ let up = (e) => {
 let click = (e) => {
     let offset = [
         Math.floor(pos[0] + (e.clientX - canvas.width / 2) / TILE_SIZE),
-        Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE) ,
+        Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE),
     ]
 
     let newBlock = chunkPos(pos, offset, chunks);
@@ -175,10 +199,21 @@ let rightclick = (e) => {
 
     let offset = [
         Math.floor(pos[0] + (e.clientX - canvas.width / 2) / TILE_SIZE),
-        Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE) ,
+        Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE),
     ]
 
-   chunkPos(pos, offset, chunks, 5);
+    let oldBlock = chunkPos(pos, offset, chunks);
+    if (oldBlock != 0) return;
+
+    let inv = getInventory();
+    let newBlock = inv[selectedIndex];
+
+    if (!newBlock.amount || !newBlock.type) return;
+    inv[selectedIndex].amount--;
+    
+    setInventory(inv);
+
+    chunkPos(pos, offset, chunks, newBlock.type);
 }
 
 window.addEventListener('keydown', down)

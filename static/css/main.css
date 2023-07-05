@@ -68,6 +68,10 @@ body, #canvas {
     user-select: none;
 }
 
+.slot.selected {
+    border: solid white 5px;
+}
+
 .slot-img {
     height: 64px;
     width: 64px;
