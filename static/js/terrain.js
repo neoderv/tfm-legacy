@@ -3,15 +3,17 @@ import SimplexNoise from "./noise.js";
 const MAX_SEED = 0xFFFF;
 const MIN_HILL = -32;
 const MAX_HILL = 32;
-const HILL_HEIGHT = 10;
+const HILL_HEIGHT = 3;
 const HILL_OFFSET = 17.5;
 const MIN_CAVE = -100;
 const MAX_CAVE = 64;
 
 const NOISE_DEPTH = [
+    // hills
     [50, 300],
     [100, 1000],
     [200, 1000],
+    // caves
     [25, 25],
     [40, 40],
     [70, 70]

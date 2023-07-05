@@ -47,5 +47,7 @@ let tileMap = tiles.map(x => {
 });
 
 export {
-    constructUpdates
+    constructUpdates,
+    TILE_SIZE,
+    canvas
 };
