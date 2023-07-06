@@ -31,6 +31,8 @@ let selectedIndex = 0;
 let isBreaking = false;
 let offset = [0, 0];
 let breakCounter = 0;
+let doGravity = true;
+let gravityQueue = [];
 
 let boundModulo = (a, b) => {
     let result = Math.round(a % b);
@@ -63,7 +65,7 @@ let chunkPos = (player, pos, chunks, newData) => {
     return dat;
 }
 
-let setBlock = (pos, data) => {
+let chunkPosGlobal = (pos, data) => {
     let chunkPos = [
         Math.floor(pos[0] / CHUNK_SIZE),
         Math.floor(pos[1] / CHUNK_SIZE)
@@ -72,11 +74,18 @@ let setBlock = (pos, data) => {
     let xMod = boundModulo(pos[0], CHUNK_SIZE);
     let yMod = boundModulo(pos[1], CHUNK_SIZE);
 
-    loadChunk(chunkPos, false)[xMod + yMod * CHUNK_SIZE] = data;
-    return;
+    let chunk = loadChunk(chunkPos, false)
+
+    if (data || data === 0) {
+        chunk[xMod + yMod * CHUNK_SIZE] = data;
+        return;
+    }
+
+    return chunk[xMod + yMod * CHUNK_SIZE];
 }
 
-let loadChunk = (pos, doStructures) => {
+// TODO: also clean this up
+let loadChunk = (pos, doStructures, doGravity) => {
     let index = `${pos[0]},${pos[1]}`;
 
     let chunk = save[index];
@@ -84,25 +93,34 @@ let loadChunk = (pos, doStructures) => {
         chunk = save[index] = initChunk(pos);
     }
 
-    chunk.forEach((block,i) => {
-        if (!doStructures || block != 9) return;
-
+    if (!doStructures) return chunk;
+    chunk.forEach((block, i) => {
         let lpos = [
             i % CHUNK_SIZE + pos[0] * CHUNK_SIZE,
             Math.floor(i / CHUNK_SIZE) + pos[1] * CHUNK_SIZE
         ];
 
-        let structData = structures[0];
-        let base = structData.base;
+        if (block == 9) {
+            let structData = structures[0];
+            let base = structData.base;
 
-        structData.struct.forEach((row,y) => {
-            row.forEach((block,x) => {
-                setBlock([lpos[0]+base[0]+x,lpos[1]+base[1]+y],block)
+            structData.struct.forEach((row, y) => {
+                row.forEach((block, x) => {
+                    chunkPosGlobal([lpos[0] + base[0] + x, lpos[1] + base[1] + y], block)
+                })
             })
-        })
 
-        
+        } else if (block == 6 && doGravity) {
+            let x2 = lpos[0];
+            let y2 = lpos[1];
+            let belowBlock = chunkPosGlobal([x2, y2 + 1]);
+            if (belowBlock != 0) return;
+
+            gravityQueue.push([x2, y2]);
+        }
     })
+
+    if (!doGravity) return chunk;
 
     return chunk;
 }
@@ -134,9 +152,19 @@ let tick = () => {
         ];
         chunks[i] = {
             pos: chunkPos,
-            chunk: loadChunk(chunkPos,true)
+            chunk: loadChunk(chunkPos, true, doGravity)
         };
     }
+
+    if (doGravity) {
+        gravityQueue.forEach(([x2, y2]) => {
+            chunkPosGlobal([x2, y2],0);
+            chunkPosGlobal([x2, y2 + 1],6);
+        })
+        gravityQueue = [];
+    }
+
+    doGravity = false;
 
     let posTemp = [pos[0], pos[1]];
 
@@ -201,6 +229,7 @@ let tick = () => {
 }
 
 let minorTick = () => {
+    doGravity = true;
     if (isBreaking) {
         let newBlock = chunkPos(pos, offset, chunks);
         if (newBlock == 0) return;
@@ -278,4 +307,4 @@ window.addEventListener('mousemove', mousemove)
 window.addEventListener('contextmenu', rightclick)
 
 setInterval(constructUpdates(tick), 1000 / 60);
-setInterval(minorTick, 1000 / 20);
+setInterval(minorTick, 1000 / 10);
