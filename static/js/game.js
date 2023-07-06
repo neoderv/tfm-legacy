@@ -225,6 +225,7 @@ let mousedown = (e) => {
 
 let rightclick = (e) => {
     e.preventDefault();
+    isBreaking = false;
 
     let offset = [
         Math.floor(pos[0] + (e.clientX - canvas.width / 2) / TILE_SIZE),
@@ -253,4 +254,4 @@ window.addEventListener('mousemove', mousemove)
 window.addEventListener('contextmenu', rightclick)
 
 setInterval(constructUpdates(tick), 1000 / 60);
-setInterval(constructUpdates(minorTick), 1000 / 20);
+setInterval(minorTick, 1000 / 20);
