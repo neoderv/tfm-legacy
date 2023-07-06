@@ -80,9 +80,9 @@ let loadChunk = (pos, doStructures) => {
     let index = `${pos[0]},${pos[1]}`;
 
     let chunk = save[index];
-    if (chunk) return chunk;
-
-    chunk = save[index] = initChunk(pos);
+    if (!chunk) {
+        chunk = save[index] = initChunk(pos);
+    }
 
     chunk.forEach((block,i) => {
         if (!doStructures || block != 9) return;
