@@ -186,6 +186,7 @@ let minorTick = () => {
 
         breakCounter++;
         if (breakCounter < MAX_BREAK) return;
+        breakCounter = 0;
 
         addInventory(newBlock);
 
