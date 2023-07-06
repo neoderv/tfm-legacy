@@ -191,6 +191,8 @@ let click = (e) => {
     if (newBlock == 0) return;
     addInventory(newBlock);
 
+    new Audio('./audio/break.wav').play();
+
     chunkPos(pos, offset, chunks, 0);
 }
 
