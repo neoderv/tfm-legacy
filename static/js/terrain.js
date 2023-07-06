@@ -1,4 +1,8 @@
 import SimplexNoise from "./noise.js";
+import { alea } from "./random.js";
+
+const CHUNK_SIZE = 16;
+const CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
 const MAX_SEED = 0xFFFF;
 const MIN_HILL = -32;
@@ -64,7 +68,7 @@ let caves = (val, y) => {
     return 1.0 - ((1.0 - val) * threshold);
 }
 
-// TODO: biome datatypes
+// TODO: biome datatypes, cleanup
 let generateTerrain = (x, y) => {
     noise.forEach((e, i) => {
         noiseVal[i] = ((e.noise2D(x / NOISE_DEPTH[i][0], y / NOISE_DEPTH[i][1]) + 1) / 2);
@@ -96,7 +100,38 @@ let generateTerrain = (x, y) => {
     sandMask = (tempType == 1);
     snowMask = (tempType == -1);
 
-    return masks[compileMasks(snowMask,sandMask,grassMask,stoneMask,dirtMask)];
+    return {
+        block: masks[compileMasks(snowMask,sandMask,grassMask,stoneMask,dirtMask)],
+        valid: (y == Math.floor(hillNoise)) && !sandMask
+    };
+}
+
+let initChunk = (pos) => {
+    let seedGenA = alea(seed);
+    let seedGenB = alea(seedGenA() + pos[0]);
+    let seedGenC = alea(seedGenB() + pos[1]);
+
+    let chunk = new Uint16Array(CHUNK_AREA);
+
+    for (let i = 0; i < CHUNK_AREA; i++) {
+        let lpos = [
+            i % CHUNK_SIZE + pos[0] * CHUNK_SIZE,
+            Math.floor(i / CHUNK_SIZE) + pos[1] * CHUNK_SIZE
+        ];
+
+        let dat = generateTerrain(lpos[0], lpos[1]);
+
+        chunk[i] = dat.block;
+
+        if (dat.valid) {
+            let rand = seedGenC();
+
+            if (rand < 0.98) continue;
+            chunk[i] = 9;
+        }
+    }
+
+    return chunk;
 }
 
 let seed = Math.floor(Math.random() * MAX_SEED);
@@ -117,5 +152,7 @@ masks = masks.map((i,j) => (i == 2 && j > masks.length / 2) ? 7 : i);
 masks = genMask(masks,8,[4]);
 
 export {
-    generateTerrain
+    initChunk,
+    CHUNK_SIZE,
+    CHUNK_AREA
 };

@@ -53,6 +53,24 @@ const tiles = [
         'texture': 'snow',
         'desc': 'I\'m going to freeze to death!'
     },
+    {
+        // 9
+        'name': 'Tree Structure Block',
+        'texture': 'test',
+        'desc': 'Summons trees'
+    },
+    {
+        // 10
+        'name': 'Oak Log',
+        'texture': 'log',
+        'desc': 'Logs'
+    },
+    {
+        // 11
+        'name': 'Oak Leaves',
+        'texture': 'leaves',
+        'desc': 'Leaves'
+    },
 ]
 
 export {

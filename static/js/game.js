@@ -1,13 +1,12 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
-import { generateTerrain } from './terrain.js';
+import { initChunk, CHUNK_SIZE, CHUNK_AREA } from './terrain.js';
 import { addInventory, selectSlot, setInventory, getInventory } from './inventory.js';
+import { structures } from './struct.js';
 
-const CHUNK_SIZE = 16;
 const RENDER_DIAMETER = 5; // This must be an odd number.
 const MAX_SAVE = 1000; // TODO: Save chunk data to server
 const MAX_BREAK = 5;
 
-const CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 const RENDER_RADIUS = (RENDER_DIAMETER - 1) / 2;
 const RENDER_AREA = RENDER_DIAMETER * RENDER_DIAMETER;
 
@@ -64,22 +63,46 @@ let chunkPos = (player, pos, chunks, newData) => {
     return dat;
 }
 
-let loadChunk = (pos) => {
+let setBlock = (pos, data) => {
+    let chunkPos = [
+        Math.floor(pos[0] / CHUNK_SIZE),
+        Math.floor(pos[1] / CHUNK_SIZE)
+    ];
+
+    let xMod = boundModulo(pos[0], CHUNK_SIZE);
+    let yMod = boundModulo(pos[1], CHUNK_SIZE);
+
+    loadChunk(chunkPos, false)[xMod + yMod * CHUNK_SIZE] = data;
+    return;
+}
+
+let loadChunk = (pos, doStructures) => {
     let index = `${pos[0]},${pos[1]}`;
 
     let chunk = save[index];
     if (chunk) return chunk;
 
-    chunk = save[index] = new Uint16Array(CHUNK_AREA);
+    chunk = save[index] = initChunk(pos);
 
-    for (let i = 0; i < CHUNK_AREA; i++) {
+    chunk.forEach((block,i) => {
+        if (!doStructures || block != 9) return;
+
         let lpos = [
             i % CHUNK_SIZE + pos[0] * CHUNK_SIZE,
             Math.floor(i / CHUNK_SIZE) + pos[1] * CHUNK_SIZE
         ];
 
-        chunk[i] = generateTerrain(lpos[0], lpos[1]);
-    }
+        let structData = structures[0];
+        let base = structData.base;
+
+        structData.struct.forEach((row,y) => {
+            row.forEach((block,x) => {
+                setBlock([lpos[0]+base[0]+x,lpos[1]+base[1]+y],block)
+            })
+        })
+
+        
+    })
 
     return chunk;
 }
@@ -111,7 +134,7 @@ let tick = () => {
         ];
         chunks[i] = {
             pos: chunkPos,
-            chunk: loadChunk(chunkPos)
+            chunk: loadChunk(chunkPos,true)
         };
     }
 
