@@ -9,7 +9,7 @@ const tiles = [
         // 1
         'name': 'Player',
         'texture': 'player',
-        'desc': 'what'
+        'desc': 'You, otherwise known as someone who loves digging in the source code.'
     },
     {
         // 2
@@ -34,7 +34,25 @@ const tiles = [
         'name': 'Test',
         'texture': 'test',
         'desc': 'Testing...'
-    }
+    },
+    {
+        // 6
+        'name': 'Sand',
+        'texture': 'sand',
+        'desc': 'Stone that has been naturally blended by the earth.'
+    },
+    {
+        // 7 
+        'name': 'Sandstone',
+        'texture': 'sandstone',
+        'desc': 'Sand but stone. Self-explanatory.'
+    },
+    {
+        // 8
+        'name': 'Snow',
+        'texture': 'snow',
+        'desc': 'I\'m going to freeze to death!'
+    },
 ]
 
 export {
