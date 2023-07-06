@@ -5,6 +5,7 @@ import { addInventory, selectSlot, setInventory, getInventory } from './inventor
 const CHUNK_SIZE = 16;
 const RENDER_DIAMETER = 5; // This must be an odd number.
 const MAX_SAVE = 1000; // TODO: Save chunk data to server
+const MAX_BREAK = 5;
 
 const CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 const RENDER_RADIUS = (RENDER_DIAMETER - 1) / 2;
@@ -28,6 +29,9 @@ let vel = [0, 0];
 let chunks = [];
 let keys = {};
 let selectedIndex = 0;
+let isBreaking = false;
+let offset = [0, 0];
+let breakCounter = 0;
 
 let boundModulo = (a, b) => {
     let result = Math.round(a % b);
@@ -168,8 +172,26 @@ let tick = () => {
     return {
         chunks,
         pos,
+        vel,
         CHUNK_SIZE
     };
+}
+
+let minorTick = () => {
+    if (isBreaking) {
+        let newBlock = chunkPos(pos, offset, chunks);
+        if (newBlock == 0) return;
+
+        new Audio('./audio/break.wav').play();
+
+        breakCounter++;
+        if (breakCounter < MAX_BREAK) return;
+
+        addInventory(newBlock);
+
+        chunkPos(pos, offset, chunks, 0);
+    }
+
 }
 
 
@@ -181,19 +203,24 @@ let up = (e) => {
     keys[e.key.toLowerCase()] = false;
 };
 
-let click = (e) => {
-    let offset = [
-        Math.floor(pos[0] + (e.clientX - canvas.width / 2) / TILE_SIZE),
-        Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE),
-    ]
+let mousemove = (e) => {
+    let x = Math.floor(pos[0] + (e.clientX - canvas.width / 2) / TILE_SIZE);
+    let y = Math.floor(pos[1] + (e.clientY - canvas.height / 2) / TILE_SIZE);
 
-    let newBlock = chunkPos(pos, offset, chunks);
-    if (newBlock == 0) return;
-    addInventory(newBlock);
+    if (offset[0] != x || offset[1] != y) breakCounter = 0;
 
-    new Audio('./audio/break.wav').play();
+    offset = [
+        x,
+        y,
+    ];
+}
 
-    chunkPos(pos, offset, chunks, 0);
+let mouseup = (e) => {
+    isBreaking = false
+}
+
+let mousedown = (e) => {
+    isBreaking = true;
 }
 
 let rightclick = (e) => {
@@ -212,7 +239,7 @@ let rightclick = (e) => {
 
     if (!newBlock.amount || !newBlock.type) return;
     inv[selectedIndex].amount--;
-    
+
     setInventory(inv);
 
     chunkPos(pos, offset, chunks, newBlock.type);
@@ -220,7 +247,10 @@ let rightclick = (e) => {
 
 window.addEventListener('keydown', down)
 window.addEventListener('keyup', up)
-window.addEventListener('click', click)
+window.addEventListener('mousedown', mousedown)
+window.addEventListener('mouseup', mouseup)
+window.addEventListener('mousemove', mousemove)
 window.addEventListener('contextmenu', rightclick)
 
 setInterval(constructUpdates(tick), 1000 / 60);
+setInterval(constructUpdates(minorTick), 1000 / 20);
