@@ -1,0 +1,5 @@
+<script>
+    let data = window.location.search.split('&data=')[1];
+    window.localStorage.setItem('token',data);
+    window.location.href = '/';
+</script>

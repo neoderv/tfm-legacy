@@ -1,10 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { Terrain } from './server/terrain.js';
 import parser from 'body-parser';
-import {randomBytes} from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import fetch from 'node-fetch';
 
 const { text } = parser;
 
@@ -74,7 +75,7 @@ app.all('/api/save/:id/:x/:y', async (req, res) => {
         res.send('nothing');
         return;
       }
-      let chunkData = terrain[id].initChunk([x,y]);
+      let chunkData = terrain[id].initChunk([x, y]);
 
       let chunk = new Uint8Array(chunkData.buffer);
       let data = DECODER.decode(chunk);
@@ -103,24 +104,37 @@ app.all('/api/save/:id/:x/:y', async (req, res) => {
 })
 
 io.on('connection', (socket) => {
-  const id = randomBytes(16).toString("hex");
+  let id = 'Unknown ' + randomBytes(16).toString("hex");
   let areaCurr = 'default';
 
-  socket.on('join', (area) => {
+  socket.on('join', async ({area, token}) => {
+
+    let username = await fetch('https://auth.montidg.net/api/account/token/', {
+      'method': 'POST',
+      'headers': {
+        "Content-Type": "application/json",
+      },
+      'body': JSON.stringify({
+        token: token,
+        scope: 'tfm'
+      })
+    }).then(x => x.json());
+
+    if (username.data && username.data.length > 0) id = username.data[0].username;
     socket.join(area);
     areaCurr = area;
   })
 
-  socket.on('move', ({x,y}) => {
-    io.to(areaCurr).emit('move', {x,y,id});
+  socket.on('move', ({ x, y }) => {
+    io.to(areaCurr).emit('move', { x, y, id });
   })
 
-  socket.on('update', ({x,y}) => {
-    io.to(areaCurr).emit('update', {x,y});
+  socket.on('update', ({ x, y }) => {
+    io.to(areaCurr).emit('update', { x, y });
   })
 
   socket.on('disconnect', () => {
-    io.to(areaCurr).emit('move', {Infinity,Infinity,id});
+    io.to(areaCurr).emit('move', { Infinity, Infinity, id });
   })
 });
 

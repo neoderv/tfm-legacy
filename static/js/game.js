@@ -342,11 +342,16 @@ let generateId = (len) => {
 }
 
 let saveI = new URLSearchParams(window.location.search).get('id');
+let token = window.localStorage.getItem('token');
 async function main() {
 
     if (!saveI) {
         saveI = generateId(36);
         window.location.search = `?id=${saveI}`
+    }
+
+    if (!token) {
+        window.location.href = `https://auth.montidg.net/account/auth?scope=tfm&next=${window.location.origin}/auth.html`;
     }
 
     let seed = await fetch(`/api/world/${saveI}`).then(x => x.json()).then(y => y.seed);
@@ -356,7 +361,7 @@ async function main() {
     setInterval(constructUpdates(tick), 1000 / 60);
     setInterval(minorTick, 1000 / 10);
 
-    socket.emit('join',saveI);
+    socket.emit('join',{area: saveI, token});
 
     socket.on('move', ({x,y,id}) => {
         players[id] = {x,y};
