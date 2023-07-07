@@ -7,8 +7,8 @@ const canvas = document.querySelector('#canvas');
 const ctx = canvas.getContext("2d");
 
 let constructUpdates = (tick) => {
-    return () => {
-        let { chunks, pos, CHUNK_SIZE, vel } = tick();
+    return async () => {
+        let { chunks, players, CHUNK_SIZE, pos } = await tick();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.imageSmoothingEnabled = false;
 
@@ -28,8 +28,21 @@ let constructUpdates = (tick) => {
                 ctx.drawImage(tile,x,y,TILE_SIZE,TILE_SIZE);
             })
         })
-        let isRight = (vel[0] < 0);
-        ctx.drawImage(tileMap[1], 0, DIVIDER_SIZE * 2 * isRight, DIVIDER_SIZE,DIVIDER_SIZE*2, canvas.width / 2,canvas.height / 2 - TILE_SIZE,TILE_SIZE,TILE_SIZE*2);
+        let isRight = false; // (vel[0] < 0);
+        Object.values(players).forEach(({x,y}) => {
+            ctx.drawImage(
+                tileMap[1], 
+                0, 
+                DIVIDER_SIZE * 2 * isRight, 
+                DIVIDER_SIZE,
+                DIVIDER_SIZE*2, 
+                canvas.width / 2 + (x - pos[0]) * TILE_SIZE,
+                canvas.height / 2 - TILE_SIZE + (y - pos[1]) * TILE_SIZE,
+                TILE_SIZE,
+                TILE_SIZE*2
+            );
+        })
+        
     }
 }
 

@@ -4,7 +4,6 @@ import { alea } from "./random.js";
 const CHUNK_SIZE = 16;
 const CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
-const MAX_SEED = 0xFFFF;
 const MIN_HILL = -32;
 const MAX_HILL = 32;
 const HILL_HEIGHT = 3;
@@ -37,11 +36,11 @@ let sigmoid = (z) => {
 let genMask = (masks, type, replace) => {
     let maskLength = masks.length;
 
-    masks.forEach((mask,i) => {
+    masks.forEach((mask, i) => {
         if (replace.indexOf(mask) != -1) {
-            masks[maskLength+i] = type;
+            masks[maskLength + i] = type;
         } else {
-            masks[maskLength+i] = mask;
+            masks[maskLength + i] = mask;
         }
     })
 
@@ -93,7 +92,7 @@ let generateTerrain = (x, y) => {
     dirtMask = dirtMask && !(caveNoise < 0.1);
 
     stoneMask = stoneMask || (caveNoise < 0.2);
-    stoneMask = stoneMask || !(y < hillNoise + (40 * hillFactor /  HILL_HEIGHT / (MAX_HILL - HILL_OFFSET)) + 2);
+    stoneMask = stoneMask || !(y < hillNoise + (40 * hillFactor / HILL_HEIGHT / (MAX_HILL - HILL_OFFSET)) + 2);
 
     grassMask = grassMask || !(y > hillNoise + 1);
 
@@ -101,7 +100,7 @@ let generateTerrain = (x, y) => {
     snowMask = (tempType == -1);
 
     return {
-        block: masks[compileMasks(snowMask,sandMask,grassMask,stoneMask,dirtMask)],
+        block: masks[compileMasks(snowMask, sandMask, grassMask, stoneMask, dirtMask)],
         valid: (y == Math.floor(hillNoise)) && !sandMask
     };
 }
@@ -134,25 +133,30 @@ let initChunk = (pos) => {
     return chunk;
 }
 
-let seed = Math.floor(Math.random() * MAX_SEED);
+let setSeed = (seedI) => {
+    seed = seedI;
+
+    for (let i = 0; i < NOISE_DEPTH.length; i++) {
+        noise[i] = new SimplexNoise(seed * NOISE_DEPTH.length + i);
+    }
+}
+
+let seed = 0;
 let noise = [];
 let noiseVal = new Array(NOISE_DEPTH.length);
 
-for (let i = 0; i < NOISE_DEPTH.length; i++) {
-    noise[i] = new SimplexNoise(seed * NOISE_DEPTH.length + i);
-}
+masks = genMask(masks, 2, [0]);
+masks = genMask(masks, 3, [2]);
+masks = genMask(masks, 4, [2]);
+masks = genMask(masks, 6, [4]);
 
-masks = genMask(masks,2,[0]);
-masks = genMask(masks,3,[2]);
-masks = genMask(masks,4,[2]);
-masks = genMask(masks,6,[4]);
+masks = masks.map((i, j) => (i == 2 && j > masks.length / 2) ? 7 : i);
 
-masks = masks.map((i,j) => (i == 2 && j > masks.length / 2) ? 7 : i);
-
-masks = genMask(masks,8,[4]);
+masks = genMask(masks, 8, [4]);
 
 export {
     initChunk,
     CHUNK_SIZE,
-    CHUNK_AREA
+    CHUNK_AREA,
+    setSeed
 };

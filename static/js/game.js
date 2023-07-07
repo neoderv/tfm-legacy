@@ -1,10 +1,9 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
-import { initChunk, CHUNK_SIZE, CHUNK_AREA } from './terrain.js';
+import { initChunk, CHUNK_SIZE, CHUNK_AREA, setSeed } from './terrain.js';
 import { addInventory, selectSlot, setInventory, getInventory } from './inventory.js';
 import { structures } from './struct.js';
 
 const RENDER_DIAMETER = 5; // This must be an odd number.
-const MAX_SAVE = 1000; // TODO: Save chunk data to server
 const MAX_BREAK = 5;
 
 const RENDER_RADIUS = (RENDER_DIAMETER - 1) / 2;
@@ -22,6 +21,9 @@ const INVENTORY_BINDS = [
     '9'
 ];
 
+const DECODER = new TextDecoder("utf-8");
+const ENCODER = new TextEncoder("utf-8");
+
 let save = {};
 let pos = [0, 20];
 let vel = [0, 0];
@@ -33,6 +35,18 @@ let offset = [0, 0];
 let breakCounter = 0;
 let doGravity = true;
 let gravityQueue = [];
+let players = {};
+
+let saveChunk = async (pos) => {
+    let chunk = new Uint8Array((await loadChunk(pos, false)).buffer);
+
+    socket.emit('update', {x: pos[0], y: pos[1]})
+
+    await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`, {
+        method: 'POST',
+        body: DECODER.decode(chunk)
+    });
+}
 
 let boundModulo = (a, b) => {
     let result = Math.round(a % b);
@@ -55,6 +69,11 @@ let chunkPos = (player, pos, chunks, newData) => {
 
     if (newData || newData === 0) {
         chunks[a].chunk[r] = newData;
+
+        saveChunk([
+            Math.floor(pos[0] / CHUNK_SIZE),
+            Math.floor(pos[1] / CHUNK_SIZE)
+        ]);
         return;
     }
 
@@ -65,7 +84,7 @@ let chunkPos = (player, pos, chunks, newData) => {
     return dat;
 }
 
-let chunkPosGlobal = (pos, data) => {
+let chunkPosGlobal = async (pos, data, triggerLoad) => {
     let chunkPos = [
         Math.floor(pos[0] / CHUNK_SIZE),
         Math.floor(pos[1] / CHUNK_SIZE)
@@ -74,7 +93,11 @@ let chunkPosGlobal = (pos, data) => {
     let xMod = boundModulo(pos[0], CHUNK_SIZE);
     let yMod = boundModulo(pos[1], CHUNK_SIZE);
 
-    let chunk = loadChunk(chunkPos, false)
+    let chunk = await loadChunk(chunkPos, false)
+
+    if (triggerLoad) {
+        saveChunk(chunkPos);
+    }
 
     if (data || data === 0) {
         chunk[xMod + yMod * CHUNK_SIZE] = data;
@@ -85,22 +108,29 @@ let chunkPosGlobal = (pos, data) => {
 }
 
 // TODO: also clean this up
-let loadChunk = (pos, doStructures, doGravity) => {
+let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
     let index = `${pos[0]},${pos[1]}`;
 
     let chunk = save[index];
-    if (!chunk) {
-        chunk = save[index] = initChunk(pos);
+    if (!chunk || forceLoad) {
+        let data = await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`).then(x => x.text())
+        if (!data || data === 'nothing') {
+            data = save[index] = initChunk(pos);
+            saveChunk([pos[0],pos[1]]);
+        } else {
+            data = save[index] = new Uint16Array(ENCODER.encode(data).buffer);
+        }
+        chunk = data;
     }
 
-    if (!doStructures) return chunk;
-    chunk.forEach((block, i) => {
+    if (!doGravity && !doStructures) return chunk;
+    chunk.forEach(async (block, i) => {
         let lpos = [
             i % CHUNK_SIZE + pos[0] * CHUNK_SIZE,
             Math.floor(i / CHUNK_SIZE) + pos[1] * CHUNK_SIZE
         ];
 
-        if (block == 9) {
+        if (block == 9 && doStructures) {
             let structData = structures[0];
             let base = structData.base;
 
@@ -113,20 +143,18 @@ let loadChunk = (pos, doStructures, doGravity) => {
         } else if (block == 6 && doGravity) {
             let x2 = lpos[0];
             let y2 = lpos[1];
-            let belowBlock = chunkPosGlobal([x2, y2 + 1]);
+            let belowBlock = await chunkPosGlobal([x2, y2 + 1]);
             if (belowBlock != 0) return;
 
             gravityQueue.push([x2, y2]);
         }
     })
 
-    if (!doGravity) return chunk;
-
     return chunk;
 }
 
 // TODO: clean this up
-let tick = () => {
+let tick = async () => {
     vel[0] /= 1.09;
     vel[1] /= 1.02;
 
@@ -152,14 +180,14 @@ let tick = () => {
         ];
         chunks[i] = {
             pos: chunkPos,
-            chunk: loadChunk(chunkPos, true, doGravity)
+            chunk: await loadChunk(chunkPos, true, doGravity)
         };
     }
 
     if (doGravity) {
         gravityQueue.forEach(([x2, y2]) => {
-            chunkPosGlobal([x2, y2],0);
-            chunkPosGlobal([x2, y2 + 1],6);
+            chunkPosGlobal([x2, y2], 0, true);
+            chunkPosGlobal([x2, y2 + 1], 6, true);
         })
         gravityQueue = [];
     }
@@ -220,10 +248,12 @@ let tick = () => {
     pos[0] += vel[0];
     pos[1] += vel[1];
 
+    socket.emit('move', {x: pos[0], y: pos[1]})
+
     return {
         chunks,
+        players,
         pos,
-        vel,
         CHUNK_SIZE
     };
 }
@@ -299,6 +329,43 @@ let rightclick = (e) => {
     chunkPos(pos, offset, chunks, newBlock.type);
 }
 
+let dec2hex = (dec) => {
+    return dec.toString(16).padStart(2, "0")
+}
+
+let generateId = (len) => {
+    let arr = new Uint8Array((len || 40) / 2)
+    window.crypto.getRandomValues(arr)
+    return Array.from(arr, dec2hex).join('')
+}
+
+let saveI = new URLSearchParams(window.location.search).get('id');
+async function main() {
+
+    if (!saveI) {
+        saveI = generateId(36);
+        window.location.search = `?id=${saveI}`
+    }
+
+    let seed = await fetch(`/api/world/${saveI}`).then(x => x.json()).then(y => y.seed);
+
+    setSeed(seed);
+
+    setInterval(constructUpdates(tick), 1000 / 60);
+    setInterval(minorTick, 1000 / 10);
+
+    socket.emit('join',saveI);
+
+    socket.on('move', ({x,y,id}) => {
+        players[id] = {x,y};
+    })
+
+    socket.on('update', ({x,y}) => {
+        loadChunk([x,y], false, false, true);
+    })
+    
+}
+
 window.addEventListener('keydown', down)
 window.addEventListener('keyup', up)
 window.addEventListener('mousedown', mousedown)
@@ -306,5 +373,6 @@ window.addEventListener('mouseup', mouseup)
 window.addEventListener('mousemove', mousemove)
 window.addEventListener('contextmenu', rightclick)
 
-setInterval(constructUpdates(tick), 1000 / 60);
-setInterval(minorTick, 1000 / 10);
+main();
+
+const socket = io();
