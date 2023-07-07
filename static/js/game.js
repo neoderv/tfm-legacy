@@ -1,7 +1,8 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
-import { initChunk, CHUNK_SIZE, CHUNK_AREA, setSeed } from './terrain.js';
+//import { Terrain, CHUNK_SIZE } from './terrain.js';
 import { addInventory, selectSlot, setInventory, getInventory } from './inventory.js';
 import { structures } from './struct.js';
+const CHUNK_SIZE = 16;
 
 const RENDER_DIAMETER = 5; // This must be an odd number.
 const MAX_BREAK = 5;
@@ -36,6 +37,7 @@ let breakCounter = 0;
 let doGravity = true;
 let gravityQueue = [];
 let players = {};
+let terrain;
 
 let saveChunk = async (pos) => {
     let chunk = new Uint8Array((await loadChunk(pos, false)).buffer);
@@ -115,8 +117,8 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
     if (!chunk || forceLoad) {
         let data = await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`).then(x => x.text())
         if (!data || data === 'nothing') {
-            data = save[index] = initChunk(pos);
-            saveChunk([pos[0],pos[1]]);
+            //data = save[index] = terrain.initChunk(pos);
+            //saveChunk([pos[0],pos[1]]);
         } else {
             data = save[index] = new Uint16Array(ENCODER.encode(data).buffer);
         }
@@ -349,7 +351,7 @@ async function main() {
 
     let seed = await fetch(`/api/world/${saveI}`).then(x => x.json()).then(y => y.seed);
 
-    setSeed(seed);
+    //terrain = new Terrain(seed);
 
     setInterval(constructUpdates(tick), 1000 / 60);
     setInterval(minorTick, 1000 / 10);

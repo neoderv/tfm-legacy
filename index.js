@@ -1,18 +1,27 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { Terrain } from './server/terrain.js';
 import parser from 'body-parser';
 import {randomBytes} from 'node:crypto';
-const { text } = parser;
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
+const { text } = parser;
+
 const app = express();
-app.use(text());
 const server = createServer(app);
+const io = new Server(server);
 
 const port = 3000;
 const MAX_SEED = 0xFFFFFFFF;
 const prefix = `${process.cwd()}/db/world`;
+
+const DECODER = new TextDecoder("utf-8");
+const ENCODER = new TextEncoder("utf-8");
+
+let terrain = {};
+
+app.use(text());
 
 (async () => {
   await mkdir(prefix, { recursive: true });
@@ -31,14 +40,18 @@ app.get('/api/world/:id', async (req, res) => {
 
   try {
     let seed = await readFile(`${prefix}/${id}/world.json`);
+    terrain[id] = new Terrain(JSON.parse(seed).seed);
     res.send(seed);
   } catch (err) {
     await mkdir(`${prefix}/${id}`, { recursive: true });
 
+    let seed = Math.floor(Math.random() * MAX_SEED);
     let worldJson = JSON.stringify({
-      seed: Math.floor(Math.random() * MAX_SEED),
+      seed: seed,
       id: id
     });
+
+    terrain[id] = new Terrain(seed);
 
     await writeFile(`${prefix}/${id}/world.json`, worldJson, 'utf8');
     res.send(worldJson);
@@ -56,7 +69,18 @@ app.all('/api/save/:id/:x/:y', async (req, res) => {
       let data = await readFile(`${prefix}/${id}/${coords}`, 'utf8');
       res.send(data);
     } catch (err) {
-      res.send('nothing')
+      let newId = terrain[id];
+      if (!newId) {
+        res.send('nothing');
+        return;
+      }
+      let chunkData = terrain[id].initChunk([x,y]);
+
+      let chunk = new Uint8Array(chunkData.buffer);
+      let data = DECODER.decode(chunk);
+
+      await writeFile(`${prefix}/${id}/${coords}`, data, 'utf8');
+      res.send(data)
     }
     return;
   } else if (req.method == 'POST') {
@@ -78,7 +102,6 @@ app.all('/api/save/:id/:x/:y', async (req, res) => {
   res.send('What are you doing?');
 })
 
-const io = new Server(server);
 io.on('connection', (socket) => {
   const id = randomBytes(16).toString("hex");
   let areaCurr = 'default';
