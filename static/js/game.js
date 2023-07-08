@@ -144,8 +144,8 @@ let tick = async () => {
 
         if (doGravity) {
             pingPos.push([
-                Math.floor(pos[0] / CHUNK_SIZE),
-                Math.floor(pos[1] / CHUNK_SIZE)
+                Math.floor(pos[0] / CHUNK_SIZE) + (i % RENDER_DIAMETER) - RENDER_RADIUS ,
+                Math.floor(pos[1] / CHUNK_SIZE) + Math.floor(i / RENDER_DIAMETER) - RENDER_RADIUS
             ])
         }
     }
