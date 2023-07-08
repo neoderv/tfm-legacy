@@ -97,10 +97,10 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
 
     let chunk = save[index];
     if (!chunk || forceLoad) {
+        console.log(chunk)
         let data = await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`).then(x => x.text())
         if (!data || data === 'nothing') {
-            //data = save[index] = terrain.initChunk(pos);
-            //saveChunk([pos[0],pos[1]]);
+            data = save[index] = new Uint16Array(CHUNK_SIZE * CHUNK_SIZE);
         } else {
             data = save[index] = new Uint16Array(ENCODER.encode(data).buffer);
         }
