@@ -156,11 +156,11 @@ class Terrain {
     }
 
     async pingChunk(pos, doGravity, doStructures) {
-        if ( (+Date.now()) - this.timer < 1000 / 5) {
-
+        let posIndex = `${pos[0]}t${pos[1]}`
+        if ( (+Date.now()) - this.timer[posIndex] < 1000 / 5.3) {
             doGravity = false;
         } else { 
-            this.timer = (+Date.now())
+            this.timer[posIndex] = (+Date.now())
         }
         let chunk = await this.loadChunk(pos);
         
@@ -197,14 +197,12 @@ class Terrain {
 
         if (doGravity) {
            this.gravityQueue.forEach(([x2, y2]) => {
-                chunk = this.chunkPosGlobal([x2, y2], 0);
-                chunk = this.chunkPosGlobal([x2, y2 + 1], 6);
+                chunk = this.chunkPosGlobal([x2, y2], 0, true);
+                chunk = this.chunkPosGlobal([x2, y2 + 1], 6, true);
                 save = true;
             })
             this.gravityQueue = [];
         }
-
-        if (save) this.saveChunk(pos);
 
         return chunk;
     }
@@ -298,9 +296,10 @@ class Terrain {
 
         this.noise = [];
         this.gravityQueue = [];
-        this.timer = (+Date.now());
+        this.timer = [];
 
         this.save = {};
+        this.timer = {};
 
         for (let i = 0; i < NOISE_DEPTH.length; i++) {
             this.noise[i] = new SimplexNoise(this.seed * NOISE_DEPTH.length + i);

@@ -18,6 +18,7 @@ class Inventory {
             try {
                 let data = await readFile(this.prefix, 'utf8');
                 this.inv = JSON.parse(data);
+                this.socket.emit('inventory', this.inv);
                 return;
             } catch (err) {
                 for (let i = 0; i < MAX_SLOTS; i++) {
@@ -27,6 +28,7 @@ class Inventory {
         }
 
         await writeFile(this.prefix, JSON.stringify(this.inv), 'utf8');
+        this.socket.emit('inventory', this.inv);
         return;
     }
 
@@ -50,14 +52,12 @@ class Inventory {
             }
         }
 
-        this.socket.emit('inventory', this.inv);
         this.updateInventory();
     }
 
     removeInventory(slot) {
         if (this.inv[slot].amount > 0) {
             this.inv[slot].amount--;
-            this.socket.emit('inventory', this.inv);
             this.updateInventory();
             return this.inv[slot].type;
         }
