@@ -1,7 +1,6 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
 //import { Terrain, CHUNK_SIZE } from './terrain.js';
 import { addInventory, selectSlot, setInventory, getInventory } from './inventory.js';
-import { structures } from './struct.js';
 const CHUNK_SIZE = 16;
 
 const RENDER_DIAMETER = 5; // This must be an odd number.
@@ -35,14 +34,12 @@ let isBreaking = false;
 let offset = [0, 0];
 let breakCounter = 0;
 let doGravity = true;
-let gravityQueue = [];
 let players = {};
-let terrain;
 
 let saveChunk = async (pos) => {
     let chunk = new Uint8Array((await loadChunk(pos, false)).buffer);
 
-    socket.emit('update', {x: pos[0], y: pos[1]})
+    socket.emit('update', { x: pos[0], y: pos[1] })
 
     await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`, {
         method: 'POST',
@@ -58,6 +55,13 @@ let boundModulo = (a, b) => {
 }
 
 let chunkPos = (player, pos, chunks, newData) => {
+    if (newData === 'break') {
+        socket.emit('break',pos)
+        return;
+    } else if (newData === 'place') {
+        socket.emit('place',pos)
+        return;
+    }
     let x = pos[0];
     let y = pos[1];
 
@@ -86,31 +90,9 @@ let chunkPos = (player, pos, chunks, newData) => {
     return dat;
 }
 
-let chunkPosGlobal = async (pos, data, triggerLoad) => {
-    let chunkPos = [
-        Math.floor(pos[0] / CHUNK_SIZE),
-        Math.floor(pos[1] / CHUNK_SIZE)
-    ];
-
-    let xMod = boundModulo(pos[0], CHUNK_SIZE);
-    let yMod = boundModulo(pos[1], CHUNK_SIZE);
-
-    let chunk = await loadChunk(chunkPos, false)
-
-    if (triggerLoad) {
-        saveChunk(chunkPos);
-    }
-
-    if (data || data === 0) {
-        chunk[xMod + yMod * CHUNK_SIZE] = data;
-        return;
-    }
-
-    return chunk[xMod + yMod * CHUNK_SIZE];
-}
-
 // TODO: also clean this up
 let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
+
     let index = `${pos[0]},${pos[1]}`;
 
     let chunk = save[index];
@@ -124,33 +106,6 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
         }
         chunk = data;
     }
-
-    if (!doGravity && !doStructures) return chunk;
-    chunk.forEach(async (block, i) => {
-        let lpos = [
-            i % CHUNK_SIZE + pos[0] * CHUNK_SIZE,
-            Math.floor(i / CHUNK_SIZE) + pos[1] * CHUNK_SIZE
-        ];
-
-        if (block == 9 && doStructures) {
-            let structData = structures[0];
-            let base = structData.base;
-
-            structData.struct.forEach((row, y) => {
-                row.forEach((block, x) => {
-                    chunkPosGlobal([lpos[0] + base[0] + x, lpos[1] + base[1] + y], block)
-                })
-            })
-
-        } else if (block == 6 && doGravity) {
-            let x2 = lpos[0];
-            let y2 = lpos[1];
-            let belowBlock = await chunkPosGlobal([x2, y2 + 1]);
-            if (belowBlock != 0) return;
-
-            gravityQueue.push([x2, y2]);
-        }
-    })
 
     return chunk;
 }
@@ -175,6 +130,7 @@ let tick = async () => {
 
     document.querySelector('#text').textContent = `x = ${pos[0]}\ny = ${pos[1]}`
 
+    let pingPos = [];
     for (let i = 0; i < RENDER_AREA; i++) {
         let chunkPos = [
             (i % RENDER_DIAMETER) - RENDER_RADIUS + Math.floor(pos[0] / CHUNK_SIZE),
@@ -184,15 +140,17 @@ let tick = async () => {
             pos: chunkPos,
             chunk: await loadChunk(chunkPos, true, doGravity)
         };
+
+
+        if (doGravity) {
+            pingPos.push([
+                Math.floor(pos[0] / CHUNK_SIZE),
+                Math.floor(pos[1] / CHUNK_SIZE)
+            ])
+        }
     }
 
-    if (doGravity) {
-        gravityQueue.forEach(([x2, y2]) => {
-            chunkPosGlobal([x2, y2], 0, true);
-            chunkPosGlobal([x2, y2 + 1], 6, true);
-        })
-        gravityQueue = [];
-    }
+    if (doGravity) socket.emit('ping',pingPos);
 
     doGravity = false;
 
@@ -250,7 +208,7 @@ let tick = async () => {
     pos[0] += vel[0];
     pos[1] += vel[1];
 
-    socket.emit('move', {x: pos[0], y: pos[1]})
+    socket.emit('move', { x: pos[0], y: pos[1] })
 
     return {
         chunks,
@@ -272,9 +230,7 @@ let minorTick = () => {
         if (breakCounter < MAX_BREAK) return;
         breakCounter = 0;
 
-        addInventory(newBlock);
-
-        chunkPos(pos, offset, chunks, 0);
+        chunkPos(pos, offset, chunks, 'break');
     }
 
 }
@@ -320,15 +276,7 @@ let rightclick = (e) => {
     let oldBlock = chunkPos(pos, offset, chunks);
     if (oldBlock != 0) return;
 
-    let inv = getInventory();
-    let newBlock = inv[selectedIndex];
-
-    if (!newBlock.amount || !newBlock.type) return;
-    inv[selectedIndex].amount--;
-
-    setInventory(inv);
-
-    chunkPos(pos, offset, chunks, newBlock.type);
+    socket.emit('place',{pos: offset, slot: selectedIndex});
 }
 
 let dec2hex = (dec) => {
@@ -361,16 +309,19 @@ async function main() {
     setInterval(constructUpdates(tick), 1000 / 60);
     setInterval(minorTick, 1000 / 10);
 
-    socket.emit('join',{area: saveI, token});
+    socket.emit('join', { area: saveI, token });
 
-    socket.on('move', ({x,y,id}) => {
-        players[id] = {x,y};
+    socket.on('move', ({ x, y, id }) => {
+        players[id] = { x, y };
     })
 
-    socket.on('update', ({x,y}) => {
-        loadChunk([x,y], false, false, true);
+    socket.on('update', ({ x, y }) => {
+        loadChunk([x, y], false, false, true);
     })
-    
+
+    socket.on('inventory', (inv) => {
+        setInventory(inv);
+    })
 }
 
 window.addEventListener('keydown', down)

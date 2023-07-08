@@ -6,6 +6,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import fetch from 'node-fetch';
+import { Inventory } from './server/inventory.js';
 
 const { text } = parser;
 
@@ -17,9 +18,6 @@ const port = 3000;
 const MAX_SEED = 0xFFFFFFFF;
 const prefix = `${process.cwd()}/db/world`;
 
-const DECODER = new TextDecoder("utf-8");
-const ENCODER = new TextEncoder("utf-8");
-
 let terrain = {};
 
 app.use(text());
@@ -27,10 +25,6 @@ app.use(text());
 (async () => {
   await mkdir(prefix, { recursive: true });
 })();
-
-function isNumeric(n) {
-  return !isNaN(parseInt(n)) && isFinite(n);
-}
 
 server.listen(port, () => {
   console.log(`G(n)ame listening on port ${port}`)
@@ -41,10 +35,12 @@ app.get('/api/world/:id', async (req, res) => {
 
   try {
     let seed = await readFile(`${prefix}/${id}/world.json`);
-    terrain[id] = new Terrain(JSON.parse(seed).seed);
+    terrain[id] = new Terrain(JSON.parse(seed).seed, id, io.to(id));
     res.send(seed);
   } catch (err) {
     await mkdir(`${prefix}/${id}`, { recursive: true });
+    await mkdir(`${prefix}/${id}/terrain`, { recursive: true });
+    await mkdir(`${prefix}/${id}/players`, { recursive: true });
 
     let seed = Math.floor(Math.random() * MAX_SEED);
     let worldJson = JSON.stringify({
@@ -52,7 +48,7 @@ app.get('/api/world/:id', async (req, res) => {
       id: id
     });
 
-    terrain[id] = new Terrain(seed);
+    terrain[id] = new Terrain(seed, id, io);
 
     await writeFile(`${prefix}/${id}/world.json`, worldJson, 'utf8');
     res.send(worldJson);
@@ -62,30 +58,16 @@ app.get('/api/world/:id', async (req, res) => {
 app.all('/api/save/:id/:x/:y', async (req, res) => {
   let { id, x, y } = req.params;
 
-
-  let coords = `${x}t${y}.bin`;
+  if (!terrain.hasOwnProperty(id))  {
+    res.send('nothing');
+    return;
+  }
 
   if (req.method == 'GET') {
-    try {
-      let data = await readFile(`${prefix}/${id}/${coords}`, 'utf8');
-      res.send(data);
-    } catch (err) {
-      let newId = terrain[id];
-      if (!newId) {
-        res.send('nothing');
-        return;
-      }
-      let chunkData = terrain[id].initChunk([x, y]);
-
-      let chunk = new Uint8Array(chunkData.buffer);
-      let data = DECODER.decode(chunk);
-
-      await writeFile(`${prefix}/${id}/${coords}`, data, 'utf8');
-      res.send(data)
-    }
+    res.send(await terrain[id].loadChunk([x, y],true));
     return;
   } else if (req.method == 'POST') {
-    let utfData = req.body;
+    /*let utfData = req.body;
 
     if (utfData.length != 512 || !isNumeric(x) || !isNumeric(y)) {
       res.send('What are you doing?');
@@ -96,7 +78,7 @@ app.all('/api/save/:id/:x/:y', async (req, res) => {
       res.send('success');
     } catch (err) {
       res.send('You broke something')
-    }
+    }*/
     return;
   }
 
@@ -106,8 +88,9 @@ app.all('/api/save/:id/:x/:y', async (req, res) => {
 io.on('connection', (socket) => {
   let id = 'Unknown ' + randomBytes(16).toString("hex");
   let areaCurr = 'default';
+  let inventory = new Inventory(socket, id, areaCurr);
 
-  socket.on('join', async ({area, token}) => {
+  socket.on('join', async ({ area, token }) => {
 
     let username = await fetch('https://auth.montidg.net/api/account/token/', {
       'method': 'POST',
@@ -123,6 +106,9 @@ io.on('connection', (socket) => {
     if (username.data && username.data.length > 0) id = username.data[0].username;
     socket.join(area);
     areaCurr = area;
+
+    inventory = new Inventory(socket, id, areaCurr);
+    await inventory.updateInventory();
   })
 
   socket.on('move', ({ x, y }) => {
@@ -133,8 +119,44 @@ io.on('connection', (socket) => {
     io.to(areaCurr).emit('update', { x, y });
   })
 
+  socket.on('break', async (pos) => {
+    if (!terrain[areaCurr]) return;
+
+    let item = await terrain[areaCurr].chunkPosGlobal(pos);
+
+    if (item == 0) return;
+
+    await inventory.updateInventory();
+    inventory.addInventory(item);
+    terrain[areaCurr].chunkPosGlobal(pos, 0, true);
+  })
+
+  socket.on('place', async ({pos, slot}) => {
+    if (!terrain[areaCurr]) return;
+
+    let item = await terrain[areaCurr].chunkPosGlobal(pos);
+
+    if (item != 0) return;
+
+    await inventory.updateInventory();
+    let place = inventory.removeInventory(slot);
+
+    if (!place) return;
+
+    terrain[areaCurr].chunkPosGlobal(pos, place, true);
+  })
+
+
   socket.on('disconnect', () => {
     io.to(areaCurr).emit('move', { Infinity, Infinity, id });
+  })
+
+  socket.on('ping', (pos) => {
+    if (!terrain[areaCurr]) return;
+    pos.forEach(x => {
+      terrain[areaCurr].pingChunk(x, true, true);
+    })
+    
   })
 });
 
