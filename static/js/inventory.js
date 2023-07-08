@@ -1,7 +1,8 @@
 import { tiles } from './tiles.js';
 
 const MAX_STACK = 100;
-const MAX_SLOTS = 9;
+const MAX_SLOTS = 36;
+const MAX_HOTBAR = 9;
 
 let inv = [];
 let selected = 0;
@@ -38,9 +39,22 @@ let setInventory = (invB) => {
     updateInventory();
 }
 
-let updateInventory = () => {
+let expandInv = (show) => {
     inv.forEach((item, slot) => {
         let outer = document.querySelector(`#outer-${slot}`);
+        if (slot >= MAX_HOTBAR && !show) {
+            outer.style.display = 'none';
+        } else {
+            outer.style.display = 'block';
+        }
+    })
+}
+
+
+let updateInventory = (show) => {
+    inv.forEach((item, slot) => {
+        let outer = document.querySelector(`#outer-${slot}`);
+
         if (slot == selected) {
             outer.classList.add('selected')
         } else {
@@ -58,14 +72,23 @@ let selectSlot = (slot) => {
     updateInventory();
 }
 
+let invObj = document.querySelector('#inventory');
 for (let i = 0; i < MAX_SLOTS; i++) {
     inv[i] = {};
-    document.querySelector('#inventory').innerHTML += `<div class='slot' id='outer-${i}'><img class='slot-img' id='inner-${i}'><span id='slot-${i}'></span></div>`
+    invObj.innerHTML += `<div class='slot' id='outer-${i}'><img class='slot-img' id='inner-${i}'><span id='slot-${i}'></span></div>`
+}
+
+for (let i = 0; i < MAX_SLOTS; i++) {
+    invObj.querySelector(`#outer-${i}`).addEventListener('mouseover', (e) => {
+        selected = i;
+        updateInventory();
+    })
 }
 
 export {
     addInventory,
     selectSlot,
     getInventory,
-    setInventory
+    setInventory,
+    expandInv
 }

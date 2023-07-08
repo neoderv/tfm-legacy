@@ -2,7 +2,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const MAX_STACK = 100;
-const MAX_SLOTS = 9;
+const MAX_SLOTS = 36;
 const prefix = `${process.cwd()}/db/world`;
 
 class Inventory {
@@ -18,13 +18,12 @@ class Inventory {
             try {
                 let data = await readFile(this.prefix, 'utf8');
                 this.inv = JSON.parse(data);
-                this.socket.emit('inventory', this.inv);
-                return;
             } catch (err) {
-                for (let i = 0; i < MAX_SLOTS; i++) {
-                    this.inv[i] = {};
-                }
+                this.inv = [];
             }
+        }
+        for (let i = this.inv.length; i < MAX_SLOTS; i++) {
+            this.inv[i] = {};
         }
 
         await writeFile(this.prefix, JSON.stringify(this.inv), 'utf8');

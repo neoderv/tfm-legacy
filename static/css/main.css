@@ -53,6 +53,11 @@ body, #canvas {
     height: calc(100vh - 20px);
 }
 
+.inv-inner {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+}
+
 .slot {
     width: 64px;
     height: 64px;
@@ -65,7 +70,6 @@ body, #canvas {
     border: solid rgb(100,100,100) 5px;
     border-bottom: solid rgb(50,50,50) 5px;
 
-    user-select: none;
 }
 
 .slot.selected {
@@ -78,6 +82,9 @@ body, #canvas {
 
     image-rendering: crisp-edges;
     image-rendering: pixelated;
+
+    user-select: none;
+    pointer-events: none;
 }
 
 .slot > span {
@@ -86,4 +93,7 @@ body, #canvas {
     left: 4px;
     color: white;
     font-weight: bold;
+
+    user-select: none;
+    pointer-events: none;
 }

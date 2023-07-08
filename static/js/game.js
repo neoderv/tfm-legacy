@@ -1,6 +1,6 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
 //import { Terrain, CHUNK_SIZE } from './terrain.js';
-import { addInventory, selectSlot, setInventory, getInventory } from './inventory.js';
+import { selectSlot, setInventory, expandInv } from './inventory.js';
 const CHUNK_SIZE = 16;
 
 const RENDER_DIAMETER = 5; // This must be an odd number.
@@ -29,6 +29,7 @@ let pos = [0, 20];
 let vel = [0, 0];
 let chunks = [];
 let keys = {};
+let toggle = {};
 let selectedIndex = 0;
 let isBreaking = false;
 let offset = [0, 0];
@@ -128,7 +129,7 @@ let tick = async () => {
 
     if (binded) selectSlot(selectedIndex);
 
-    document.querySelector('#text').textContent = `x = ${pos[0]}\ny = ${pos[1]}`
+    document.querySelector('#text').textContent = `x = ${Math.round(pos[0])}\ny = ${Math.round(pos[1])}`
 
     let pingPos = [];
     for (let i = 0; i < RENDER_AREA; i++) {
@@ -208,7 +209,7 @@ let tick = async () => {
     pos[0] += vel[0];
     pos[1] += vel[1];
 
-    socket.emit('move', { x: pos[0], y: pos[1] })
+    socket.emit('move', { x: Math.round(pos[0] * 100) / 100, y: Math.round(pos[1] * 100) / 100 })
 
     return {
         chunks,
@@ -238,6 +239,8 @@ let minorTick = () => {
 
 let down = (e) => {
     keys[e.key.toLowerCase()] = true;
+    toggle[e.key.toLowerCase()] = !toggle[e.key.toLowerCase()];
+    expandInv(toggle['e']);
 };
 
 let up = (e) => {
