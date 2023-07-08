@@ -244,7 +244,11 @@ class Terrain {
             let data = DECODER.decode(chunk);
 
             await writeFile(`${prefix}/${this.id}/terrain/${coords}`, data, 'utf8');
-            return chunkData;
+            if (!cast) {
+                return chunkData;
+            } else {
+                return data;
+            }
         }
     }
 
