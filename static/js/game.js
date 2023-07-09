@@ -102,13 +102,13 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
 
     let chunk = save[index];
     if (!chunk || forceLoad) {
+        chunk = save[index] = new Uint16Array(CHUNK_SIZE * CHUNK_SIZE);
+        
         let data = await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`).then(x => x.text())
-        if (!data || data === 'nothing') {
-            data = save[index] = new Uint16Array(CHUNK_SIZE * CHUNK_SIZE);
-        } else {
-            data = save[index] = new Uint16Array(ENCODER.encode(data).buffer);
+
+        if (data && data !== 'nothing') {
+            chunk = save[index] = new Uint16Array(ENCODER.encode(data).buffer);
         }
-        chunk = data;
     }
 
     return chunk;
