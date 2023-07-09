@@ -100,7 +100,7 @@ io.on('connection', (socket) => {
 
   let a = setInterval(() => {
     io.to(areaCurr).emit('origin', { x, y, id });
-  }, 100)
+  }, 1000)
 
   let b;
 
