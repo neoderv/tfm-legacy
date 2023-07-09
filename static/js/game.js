@@ -217,7 +217,7 @@ let tick = async () => {
     posDelta = [pos[0] - posOld[0], pos[1] - posOld[1]];
     let posDeltaDelta = [posDelta[0] - posDeltaOld[0], posDelta[1] - posDeltaOld[1]];
 
-    socket.emit('move', { xv: Math.round(posDelta[0] * 1000000) / 1000000, yv: Math.round(posDelta[1] * 1000000) / 1000000 })
+    socket.emit('move', pos)
 
     doGravity = false;
 
@@ -331,8 +331,8 @@ async function main() {
     socket.emit('join', { area: saveI, token });
 
     socket.on('move', ({ x, y, id }) => {
-        players[id].xv = x;
-        players[id].yv = y;
+        players[id].x = x;
+        players[id].y = y;
     })
 
     socket.on('health', (h) => {

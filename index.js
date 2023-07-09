@@ -129,11 +129,6 @@ io.on('connection', (socket) => {
 
     socket.emit('init', { id });
     io.to(areaCurr).emit('origin', { x, y, id });
-
-    b = setInterval(() => {
-      x += xDelta;
-      y += yDelta;
-    }, 1000 / 60)
   })
 
   socket.on('damage', async () => {
@@ -149,14 +144,16 @@ io.on('connection', (socket) => {
     } 
   })
 
-  socket.on('move', ({ xv, yv }) => {
-    xDelta = xv * 1;
-    yDelta = yv * 1;
+  socket.on('move', ([ x2, y2 ]) => {
+    xDelta = x2 - x;
+    yDelta = y2 - y;
 
     if (isNaN(xDelta) || isNaN(yDelta)) return;
     if (Math.abs(xDelta) > 10 || Math.abs(yDelta) > 10) return;
 
-    io.to(areaCurr).emit('move', { x: xv, y: yv, id });
+    io.to(areaCurr).emit('move', { x: x2, y: y2, id });
+    x = x2;
+    y = y2;
   })
 
   socket.on('break', async (pos) => {
