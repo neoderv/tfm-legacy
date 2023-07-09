@@ -345,9 +345,7 @@ async function main() {
         let xd = players[idO].x - pos[0];
         let yd = players[idO].y - pos[1];
 
-        if (Math.abs(xd) > 5 || Math.abs(yd) > 5) {
-            pos = [players[idO].x, players[idO].y]
-        }
+        pos = [players[idO].x, players[idO].y];
 
     })
 
