@@ -154,7 +154,7 @@ io.on('connection', (socket) => {
     yDelta = yv * 1;
 
     if (isNaN(xDelta) || isNaN(yDelta)) return;
-    if (Math.abs(xDelta) > 1.5 || Math.abs(yDelta) > 1.5) return;
+    if (Math.abs(xDelta) > 10 || Math.abs(yDelta) > 10) return;
 
     io.to(areaCurr).emit('move', { x: xv, y: yv, id });
   })
