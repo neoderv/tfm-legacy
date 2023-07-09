@@ -170,7 +170,6 @@ io.on('connection', (socket) => {
 
   socket.on('place', async ({ pos, slot }) => {
     if (!terrain[areaCurr]) return;
-
     let item = await terrain[areaCurr].chunkPosGlobal(pos);
 
     if (item != 0) return;

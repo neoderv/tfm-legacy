@@ -1,6 +1,6 @@
 import { constructUpdates, TILE_SIZE, canvas } from './render.js';
 //import { Terrain, CHUNK_SIZE } from './terrain.js';
-import { selectSlot, setInventory, expandInv } from './inventory.js';
+import { selectSlot, setInventory, expandInv, addRecipes } from './inventory.js';
 const CHUNK_SIZE = 16;
 
 const RENDER_DIAMETER = 5; // This must be an odd number.
@@ -55,7 +55,6 @@ let chunkPos = (player, pos, chunks, newData) => {
         socket.emit('break', pos)
         return;
     } else if (newData === 'place') {
-        socket.emit('place', pos)
         return;
     }
     let x = pos[0];
@@ -294,6 +293,7 @@ let rightclick = (e) => {
     let oldBlock = chunkPos(pos, offset, chunks);
     if (oldBlock != 0) return;
 
+    selectedIndex = selectSlot();
     socket.emit('place', { pos: offset, slot: selectedIndex });
 }
 
@@ -355,6 +355,10 @@ async function main() {
 
     socket.on('update', ({ x, y }) => {
         loadChunk([x, y], false, false, true);
+    })
+
+    socket.on('recipes', (recipe) => {
+        addRecipes(recipe);
     })
 
     socket.on('inventory', (inv) => {

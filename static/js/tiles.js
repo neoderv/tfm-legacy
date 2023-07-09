@@ -55,9 +55,9 @@ const tiles = [
     },
     {
         // 9
-        'name': 'Tree Structure Block',
-        'texture': 'test',
-        'desc': 'Summons trees'
+        'name': 'OmniTree',
+        'texture': 'leaves',
+        'desc': 'Summons trees or cacti'
     },
     {
         // 10

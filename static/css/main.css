@@ -72,6 +72,13 @@ body, #canvas {
 
 }
 
+.slot.crafter {
+    background: rgb(50,100,150);
+
+    border: solid rgb(33,66,100) 5px;
+    border-bottom: solid rgb(25,33,50) 5px;
+}
+
 .slot.selected {
     border: solid white 5px;
 }
@@ -96,4 +103,17 @@ body, #canvas {
 
     user-select: none;
     pointer-events: none;
+}
+
+.slot > span.tooltip {
+    position: relative;
+    top: -45px;
+    left: 64px;
+    display: block;
+
+    width: 250px;
+    padding: 5px;
+    background: rgba(0,0,0,0.5);
+
+    white-space: pre-wrap;
 }

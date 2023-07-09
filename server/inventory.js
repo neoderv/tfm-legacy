@@ -1,5 +1,6 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { RECIPES } from './recipes.js';
 
 const MAX_STACK = 100;
 const MAX_SLOTS = 36;
@@ -13,6 +14,28 @@ class Inventory {
         this.prefix = `${prefix}/${world}/players/${id}.json`
         this.pos = [0,0];
         this.health = 100;
+    }
+
+    getRecipes() {
+        let validRecipes = [];
+
+        for (let recipe of RECIPES) {
+            let input = recipe.input;
+
+            let valid = true;
+
+            for (let {type, amount} of input) {
+                let invItems = this.inv.filter(x => x.type == type && x.amount >= amount);
+                if (!invItems || invItems.length < 1) {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid) validRecipes.push(recipe);
+        }
+
+        return validRecipes;
     }
 
     async updateInventory() {
@@ -39,6 +62,7 @@ class Inventory {
         }), 'utf8');
         this.socket.emit('inventory', this.inv);
         this.socket.emit('health', this.health);
+        this.socket.emit('recipes', this.getRecipes());
         return;
     }
 
@@ -66,12 +90,30 @@ class Inventory {
     }
 
     removeInventory(slot) {
+        if (slot > MAX_SLOTS) return;
+
+        if (slot < 0) {
+            let recipe = this.getRecipes()[-1 - slot];
+            if (!recipe) return;
+
+            for (let item of recipe.input) {
+                let i = this.inv.findIndex(x => x.type == item.type && x.amount >= item.amount);
+
+                if (i == -1) return;
+                
+                console.log(item.amount)
+
+                this.inv[i].amount -= item.amount;
+            }
+            this.addInventory(recipe.output);
+            return;
+        }
+
         if (this.inv[slot].amount > 0) {
             this.inv[slot].amount--;
             this.updateInventory();
             return this.inv[slot].type;
         }
-
     }
 
     async healthAdd(amount) {
