@@ -79,7 +79,7 @@ for (let i = 0; i < MAX_SLOTS; i++) {
 }
 
 for (let i = 0; i < MAX_SLOTS; i++) {
-    invObj.querySelector(`#outer-${i}`).addEventListener('mouseover', (e) => {
+    invObj.querySelector(`#outer-${i}`).addEventListener('click', (e) => {
         selected = i;
         updateInventory();
     })

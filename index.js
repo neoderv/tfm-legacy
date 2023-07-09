@@ -115,6 +115,10 @@ io.on('connection', (socket) => {
     io.to(areaCurr).emit('move', { x, y, id });
   })
 
+  socket.on('origin', ({ x, y, xv, yv }) => {
+    io.to(areaCurr).emit('origin', { x, y, xv, yv, id });
+  })
+
   socket.on('update', ({ x, y }) => {
     io.to(areaCurr).emit('update', { x, y });
   })

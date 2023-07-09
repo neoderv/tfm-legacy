@@ -37,6 +37,10 @@ let breakCounter = 0;
 let doGravity = true;
 let players = {};
 
+let posDelta = [0,0];
+let posDeltaOld = [0,0];
+let posOld = [0,0];
+
 let saveChunk = async (pos) => {
     let chunk = new Uint8Array((await loadChunk(pos, false)).buffer);
 
@@ -98,7 +102,6 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
 
     let chunk = save[index];
     if (!chunk || forceLoad) {
-        console.log(chunk)
         let data = await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`).then(x => x.text())
         if (!data || data === 'nothing') {
             data = save[index] = new Uint16Array(CHUNK_SIZE * CHUNK_SIZE);
@@ -113,6 +116,9 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
 
 // TODO: clean this up
 let tick = async () => {
+    posDeltaOld = [posDelta[0], posDelta[1]];
+    posOld = [pos[0], pos[1]];
+
     vel[0] /= 1.09;
     vel[1] /= 1.02;
 
@@ -152,8 +158,6 @@ let tick = async () => {
     }
 
     if (doGravity) socket.emit('ping',pingPos);
-
-    doGravity = false;
 
     let posTemp = [pos[0], pos[1]];
 
@@ -209,7 +213,32 @@ let tick = async () => {
     pos[0] += vel[0];
     pos[1] += vel[1];
 
-    socket.emit('move', { x: Math.round(pos[0] * 100) / 100, y: Math.round(pos[1] * 100) / 100 })
+    posDelta = [pos[0] - posOld[0], pos[1] - posOld[1]];
+    let posDeltaDelta = [posDelta[0] - posDeltaOld[0], posDelta[1] - posDeltaOld[1]];
+    let dist = Math.sqrt(posDeltaDelta[0] * posDeltaDelta[0] + posDeltaDelta[1] * posDeltaDelta[1])
+
+    if (Math.abs(dist) > 0.001) {
+        socket.emit('move', { x: Math.round(posDeltaDelta[0] * 10000) / 10000, y: Math.round(posDeltaDelta[1] * 10000) / 10000 })
+    }
+
+    if (doGravity || Math.abs(dist) > 0.5) {
+        socket.emit('origin', { 
+            x: Math.round(pos[0] * 100) / 100,
+            y: Math.round(pos[1] * 100) / 100,
+            xv: posDelta[0],
+            yv: posDelta[1] 
+        })
+    }
+
+    doGravity = false;
+
+    Object.keys(players).forEach((id) => {
+        players[id].xv += players[id].xvv;
+        players[id].yv += players[id].yvv;
+
+        players[id].x += players[id].xv;
+        players[id].y += players[id].yv;
+    })
 
     return {
         chunks,
@@ -315,7 +344,12 @@ async function main() {
     socket.emit('join', { area: saveI, token });
 
     socket.on('move', ({ x, y, id }) => {
-        players[id] = { x, y };
+        players[id].xvv = x;
+        players[id].yvv = y;
+    })
+
+    socket.on('origin', ({ x, y, xv, yv, id }) => {
+        players[id] = { x, y, xv, yv, xvv: 0, yvv: 0 };
     })
 
     socket.on('update', ({ x, y }) => {
