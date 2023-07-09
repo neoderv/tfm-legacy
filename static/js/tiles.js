@@ -71,6 +71,24 @@ const tiles = [
         'texture': 'leaves',
         'desc': 'Leaves'
     },
+    {
+        // 12
+        'name': 'Cactus',
+        'texture': 'cactus',
+        'desc': 'Ouch!'
+    },
+    {
+        // 13
+        'name': 'Cactus Branch',
+        'texture': 'cactus2',
+        'desc': 'Ouch: the Sequel'
+    },
+    {
+        // 14
+        'name': 'Cactus Joint',
+        'texture': 'cactus3',
+        'desc': 'Ouch: the Trequel'
+    },
 ]
 
 export {

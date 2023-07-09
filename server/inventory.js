@@ -11,23 +11,34 @@ class Inventory {
         this.inv = [];
         this.socket = socket;
         this.prefix = `${prefix}/${world}/players/${id}.json`
+        this.pos = [0,0];
+        this.health = 100;
     }
 
     async updateInventory() {
         if (this.inv.length == 0) {
             try {
                 let data = await readFile(this.prefix, 'utf8');
-                this.inv = JSON.parse(data);
+                this.inv = JSON.parse(data).inv || JSON.parse(data);
+                this.pos = JSON.parse(data).pos || [0,-10]
+                this.health = JSON.parse(data).health || 100
             } catch (err) {
                 this.inv = [];
+                this.pos = [0,-10];
+                this.health = 100;
             }
         }
         for (let i = this.inv.length; i < MAX_SLOTS; i++) {
             this.inv[i] = {};
         }
 
-        await writeFile(this.prefix, JSON.stringify(this.inv), 'utf8');
+        await writeFile(this.prefix, JSON.stringify({
+            inv: this.inv,
+            pos: this.pos,
+            health: this.health
+        }), 'utf8');
         this.socket.emit('inventory', this.inv);
+        this.socket.emit('health', this.health);
         return;
     }
 
@@ -63,8 +74,26 @@ class Inventory {
 
     }
 
+    async healthAdd(amount) {
+        this.health += amount;
+
+        if (this.health < 1) {
+            this.pos = [0,-10];
+            this.health = 100;
+            this.socket.emit('health', this.health);
+            return true;
+        }
+        this.socket.emit('health', this.health);
+        return false;
+    }
+
     getInventory() {
         return this.inv;
+    }
+
+    updatePos(pos) {
+        this.pos = pos;
+        this.updateInventory();
     }
 }
 

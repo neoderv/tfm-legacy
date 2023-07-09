@@ -58,13 +58,13 @@ app.get('/api/world/:id', async (req, res) => {
 app.all('/api/save/:id/:x/:y', async (req, res) => {
   let { id, x, y } = req.params;
 
-  if (!terrain.hasOwnProperty(id))  {
+  if (!terrain.hasOwnProperty(id)) {
     res.send('nothing');
     return;
   }
 
   if (req.method == 'GET') {
-    res.send(await terrain[id].loadChunk([x, y],true));
+    res.send(await terrain[id].loadChunk([x, y], true));
     return;
   } else if (req.method == 'POST') {
     /*let utfData = req.body;
@@ -90,6 +90,20 @@ io.on('connection', (socket) => {
   let areaCurr = 'default';
   let inventory = new Inventory(socket, id, areaCurr);
 
+  let x = 0;
+  let y = -10;
+
+  let xDelta = 0;
+  let yDelta = 0;
+
+  let lastDamage = +(new Date())
+
+  let a = setInterval(() => {
+    io.to(areaCurr).emit('origin', { x, y, id });
+  }, 1000)
+
+  let b;
+
   socket.on('join', async ({ area, token }) => {
 
     let username = await fetch('https://auth.montidg.net/api/account/token/', {
@@ -109,14 +123,40 @@ io.on('connection', (socket) => {
 
     inventory = new Inventory(socket, id, areaCurr);
     await inventory.updateInventory();
+
+    x = inventory.pos[0];
+    y = inventory.pos[1];
+
+    socket.emit('init', { id });
+    io.to(areaCurr).emit('origin', { x, y, id });
+
+    b = setInterval(() => {
+      x += xDelta;
+      y += yDelta;
+    }, 1000 / 60)
   })
 
-  socket.on('move', ({ x, y }) => {
-    io.to(areaCurr).emit('move', { x, y, id });
+  socket.on('damage', async () => {
+    if (lastDamage - new Date() > -30) return;
+    lastDamage = +(new Date())
+    if (!inventory) return;
+
+    let inv = await inventory.healthAdd(-10);
+
+    if (inv) {
+      [x,y] = inventory.pos;
+      inventory.health = 100;
+    } 
   })
 
-  socket.on('origin', ({ x, y, xv, yv }) => {
-    io.to(areaCurr).emit('origin', { x, y, xv, yv, id });
+  socket.on('move', ({ xv, yv }) => {
+    xDelta = xv * 1;
+    yDelta = yv * 1;
+
+    if (isNaN(xDelta) || isNaN(yDelta)) return;
+    if (Math.abs(xDelta) > 1.5 || Math.abs(yDelta) > 1.5) return;
+
+    io.to(areaCurr).emit('move', { x: xv, y: yv, id });
   })
 
   socket.on('break', async (pos) => {
@@ -131,7 +171,7 @@ io.on('connection', (socket) => {
     terrain[areaCurr].chunkPosGlobal(pos, 0, true);
   })
 
-  socket.on('place', async ({pos, slot}) => {
+  socket.on('place', async ({ pos, slot }) => {
     if (!terrain[areaCurr]) return;
 
     let item = await terrain[areaCurr].chunkPosGlobal(pos);
@@ -147,8 +187,12 @@ io.on('connection', (socket) => {
   })
 
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     io.to(areaCurr).emit('move', { Infinity, Infinity, id });
+    clearInterval(a);
+    clearInterval(b);
+
+    await inventory.updatePos([x,y]);
   })
 
   socket.on('ping', async (pos) => {
@@ -156,7 +200,7 @@ io.on('connection', (socket) => {
     for (let x of pos) {
       await terrain[areaCurr].pingChunk(x, true, true);
     }
-    
+
   })
 });
 

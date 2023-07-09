@@ -123,7 +123,7 @@ class Terrain {
 
         return {
             block: masks[compileMasks(snowMask, sandMask, grassMask, stoneMask, dirtMask)],
-            valid: (y == Math.floor(hillNoise)) && !sandMask
+            valid: (y == Math.floor(hillNoise))
         };
     }
 
@@ -175,7 +175,9 @@ class Terrain {
             ];
 
             if (block == 9 && doStructures) {
-                let structData = structures[0];
+                let belowBlock = await this.chunkPosGlobal([lpos[0], lpos[1] + 1]);
+                if (belowBlock == 0) break;
+                let structData = (belowBlock == 6) ? structures[1] : structures[0];
                 let { struct, base } = structData;
                 save = true;
                 for (let y = 0; y < struct.length; y++) {

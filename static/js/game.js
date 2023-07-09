@@ -41,6 +41,8 @@ let posDelta = [0, 0];
 let posDeltaOld = [0, 0];
 let posOld = [0, 0];
 
+let health = 100;
+
 let boundModulo = (a, b) => {
     let result = Math.round(a % b);
     if (result < 0) result += b;
@@ -86,7 +88,7 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
 
     let chunk = save[index];
     if (!chunk || forceLoad) {
-        chunk = save[index] = new Uint16Array(CHUNK_SIZE * CHUNK_SIZE);
+        if (!chunk) chunk = save[index] = new Uint16Array(CHUNK_SIZE * CHUNK_SIZE);
 
         let data = await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`).then(x => x.text())
 
@@ -119,7 +121,7 @@ let tick = async () => {
 
     if (binded) selectSlot(selectedIndex);
 
-    document.querySelector('#text').textContent = `x = ${Math.round(pos[0])}\ny = ${Math.round(pos[1])}`
+    document.querySelector('#text').textContent = `x = ${Math.round(pos[0])}\ny = ${Math.round(pos[1])}\nhealth = ${health}`
 
     let pingPos = [];
     for (let i = 0; i < RENDER_AREA; i++) {
@@ -194,32 +196,32 @@ let tick = async () => {
         vel[0] = 0;
     }
 
+    let hurtBlocks = [12, 13, 14];
+
+    let damage = false;
+    hurtBlocks.forEach(x => {
+        if ((chunkPos(posTemp, [right, top], chunks) == x) ||
+            (chunkPos(posTemp, [left, top], chunks) == x) ||
+            (chunkPos(posTemp, [right, bottom2], chunks) == x) ||
+            (chunkPos(posTemp, [left, bottom2], chunks) == x) && doGravity) {
+            damage = true;
+        }
+    })
+
+    if (damage) socket.emit('damage')
+
+
     pos[0] += vel[0];
     pos[1] += vel[1];
 
     posDelta = [pos[0] - posOld[0], pos[1] - posOld[1]];
     let posDeltaDelta = [posDelta[0] - posDeltaOld[0], posDelta[1] - posDeltaOld[1]];
-    let dist = Math.sqrt(posDeltaDelta[0] * posDeltaDelta[0] + posDeltaDelta[1] * posDeltaDelta[1])
 
-    if (Math.abs(dist) > 0.001) {
-        socket.emit('move', { x: Math.round(posDeltaDelta[0] * 1000000) / 1000000, y: Math.round(posDeltaDelta[1] * 1000000) / 1000000 })
-    }
-
-    if (doGravity || Math.abs(dist) > 0.5) {
-        socket.emit('origin', {
-            x: Math.round(pos[0] * 100) / 100,
-            y: Math.round(pos[1] * 100) / 100,
-            xv: posDelta[0],
-            yv: posDelta[1]
-        })
-    }
+    socket.emit('move', { xv: Math.round(posDelta[0] * 1000000) / 1000000, yv: Math.round(posDelta[1] * 1000000) / 1000000 })
 
     doGravity = false;
 
     Object.keys(players).forEach((id) => {
-        players[id].xv += players[id].xvv;
-        players[id].yv += players[id].yvv;
-
         players[id].x += players[id].xv;
         players[id].y += players[id].yv;
     })
@@ -307,6 +309,7 @@ let generateId = (len) => {
 
 let saveI = new URLSearchParams(window.location.search).get('id');
 let token = window.localStorage.getItem('token');
+let idO = -1;
 async function main() {
 
     if (!saveI) {
@@ -328,12 +331,28 @@ async function main() {
     socket.emit('join', { area: saveI, token });
 
     socket.on('move', ({ x, y, id }) => {
-        players[id].xvv = x;
-        players[id].yvv = y;
+        players[id].xv = x;
+        players[id].yv = y;
     })
 
-    socket.on('origin', ({ x, y, xv, yv, id }) => {
-        players[id] = { x, y, xv, yv, xvv: 0, yvv: 0 };
+    socket.on('health', (h) => {
+        health = h;
+    })
+
+
+    socket.on('origin', ({ x, y, id }) => {
+        players[id] = { x, y, xv: 0, yv: 0 };
+        let xd = players[idO].x - pos[0];
+        let yd = players[idO].y - pos[1];
+
+        if (Math.abs(xd) > 0.3 || Math.abs(yd) > 0.3) {
+            pos = [players[idO].x, players[idO].y]
+        }
+
+    })
+
+    socket.on('init', ({ id }) => {
+        idO = id;
     })
 
     socket.on('update', ({ x, y }) => {
