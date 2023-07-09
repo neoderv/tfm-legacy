@@ -119,10 +119,6 @@ io.on('connection', (socket) => {
     io.to(areaCurr).emit('origin', { x, y, xv, yv, id });
   })
 
-  socket.on('update', ({ x, y }) => {
-    io.to(areaCurr).emit('update', { x, y });
-  })
-
   socket.on('break', async (pos) => {
     if (!terrain[areaCurr]) return;
 
@@ -155,11 +151,11 @@ io.on('connection', (socket) => {
     io.to(areaCurr).emit('move', { Infinity, Infinity, id });
   })
 
-  socket.on('ping', (pos) => {
+  socket.on('ping', async (pos) => {
     if (!terrain[areaCurr]) return;
-    pos.forEach(x => {
-      terrain[areaCurr].pingChunk(x, true, true);
-    })
+    for (let x of pos) {
+      await terrain[areaCurr].pingChunk(x, true, true);
+    }
     
   })
 });

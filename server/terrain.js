@@ -157,17 +157,18 @@ class Terrain {
 
     async pingChunk(pos, doGravity, doStructures) {
         let posIndex = `${pos[0]}t${pos[1]}`
-        if ( (+Date.now()) - this.timer[posIndex] < 1000 / 5.3) {
+        if ((+Date.now()) - this.timer[posIndex] < 1000 / 5.3) {
             doGravity = false;
-        } else { 
+        } else {
             this.timer[posIndex] = (+Date.now())
         }
         let chunk = await this.loadChunk(pos);
-        
+
         let save = false;
 
         if (!doGravity && !doStructures) return chunk;
-        chunk.forEach(async (block, i) => {
+        for (let i = 0; i < chunk.length; i++) {
+            let block = chunk[i];
             let lpos = [
                 i % CHUNK_SIZE + pos[0] * CHUNK_SIZE,
                 Math.floor(i / CHUNK_SIZE) + pos[1] * CHUNK_SIZE
@@ -175,14 +176,15 @@ class Terrain {
 
             if (block == 9 && doStructures) {
                 let structData = structures[0];
-                let base = structData.base;
-
-                structData.struct.forEach((row, y) => {
-                    row.forEach((block, x) => {
-                        chunk = this.chunkPosGlobal([lpos[0] + base[0] + x, lpos[1] + base[1] + y], block)
-                        save = true;
-                    })
-                })
+                let { struct, base } = structData;
+                save = true;
+                for (let y = 0; y < struct.length; y++) {
+                    let row = struct[y];
+                    for (let x = 0; x < row.length; x++) {
+                        let block = row[x];
+                        await this.chunkPosGlobal([lpos[0] + base[0] + x, lpos[1] + base[1] + y], block)
+                    }
+                }
 
 
             } else if (block == 6 && doGravity) {
@@ -193,18 +195,17 @@ class Terrain {
 
                 this.gravityQueue.push([x2, y2]);
             }
-        })
+        }
 
         if (doGravity) {
-           this.gravityQueue.forEach(([x2, y2]) => {
-                chunk = this.chunkPosGlobal([x2, y2], 0, true);
-                chunk = this.chunkPosGlobal([x2, y2 + 1], 6, true);
-                save = true;
-            })
+            for (let [x2, y2] of this.gravityQueue) {
+                chunk = await this.chunkPosGlobal([x2, y2], 0, true);
+                chunk = await this.chunkPosGlobal([x2, y2 + 1], 6, true);
+            }
             this.gravityQueue = [];
         }
 
-        return chunk;
+        if (save) this.socket.emit('update', { x: pos[0], y: pos[1] })
     }
 
     async loadChunk(pos, cast) {
@@ -214,7 +215,7 @@ class Terrain {
 
         try {
             let data = this.save[coords];
-                        
+
             if (!data) {
                 let data2 = await readFile(`${prefix}/${this.id}/terrain/${coords}`, 'utf8');
 
@@ -226,27 +227,27 @@ class Terrain {
 
             await writeFile(`${prefix}/${this.id}/terrain/${coords}`, data, 'utf8');
 
-            if (!cast) {
+            if (!cast && data.length != 0) {
                 return data;
-            } else {
+            } else if (data.length != 0) {
                 let data4 = new Uint8Array(data.buffer);
                 let data5 = DECODER.decode(data4);
 
                 return data5;
             }
 
-        } catch (err) {
-            let chunkData = this.initChunk([x, y]);
+        } catch (err) { }
 
-            let chunk = new Uint8Array(chunkData.buffer);
-            let data = DECODER.decode(chunk);
+        let chunkData = this.initChunk([x, y]);
 
-            await writeFile(`${prefix}/${this.id}/terrain/${coords}`, data, 'utf8');
-            if (!cast) {
-                return chunkData;
-            } else {
-                return data;
-            }
+        let chunk = new Uint8Array(chunkData.buffer);
+        let data = DECODER.decode(chunk);
+
+        await writeFile(`${prefix}/${this.id}/terrain/${coords}`, data, 'utf8');
+        if (!cast) {
+            return chunkData;
+        } else {
+            return data;
         }
     }
 

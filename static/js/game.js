@@ -37,20 +37,9 @@ let breakCounter = 0;
 let doGravity = true;
 let players = {};
 
-let posDelta = [0,0];
-let posDeltaOld = [0,0];
-let posOld = [0,0];
-
-let saveChunk = async (pos) => {
-    let chunk = new Uint8Array((await loadChunk(pos, false)).buffer);
-
-    socket.emit('update', { x: pos[0], y: pos[1] })
-
-    await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`, {
-        method: 'POST',
-        body: DECODER.decode(chunk)
-    });
-}
+let posDelta = [0, 0];
+let posDeltaOld = [0, 0];
+let posOld = [0, 0];
 
 let boundModulo = (a, b) => {
     let result = Math.round(a % b);
@@ -61,10 +50,10 @@ let boundModulo = (a, b) => {
 
 let chunkPos = (player, pos, chunks, newData) => {
     if (newData === 'break') {
-        socket.emit('break',pos)
+        socket.emit('break', pos)
         return;
     } else if (newData === 'place') {
-        socket.emit('place',pos)
+        socket.emit('place', pos)
         return;
     }
     let x = pos[0];
@@ -81,10 +70,6 @@ let chunkPos = (player, pos, chunks, newData) => {
     if (newData || newData === 0) {
         chunks[a].chunk[r] = newData;
 
-        saveChunk([
-            Math.floor(pos[0] / CHUNK_SIZE),
-            Math.floor(pos[1] / CHUNK_SIZE)
-        ]);
         return;
     }
 
@@ -95,7 +80,6 @@ let chunkPos = (player, pos, chunks, newData) => {
     return dat;
 }
 
-// TODO: also clean this up
 let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
 
     let index = `${pos[0]},${pos[1]}`;
@@ -151,13 +135,13 @@ let tick = async () => {
 
         if (doGravity) {
             pingPos.push([
-                Math.floor(pos[0] / CHUNK_SIZE) + (i % RENDER_DIAMETER) - RENDER_RADIUS ,
+                Math.floor(pos[0] / CHUNK_SIZE) + (i % RENDER_DIAMETER) - RENDER_RADIUS,
                 Math.floor(pos[1] / CHUNK_SIZE) + Math.floor(i / RENDER_DIAMETER) - RENDER_RADIUS
             ])
         }
     }
 
-    if (doGravity) socket.emit('ping',pingPos);
+    if (doGravity) socket.emit('ping', pingPos);
 
     let posTemp = [pos[0], pos[1]];
 
@@ -222,11 +206,11 @@ let tick = async () => {
     }
 
     if (doGravity || Math.abs(dist) > 0.5) {
-        socket.emit('origin', { 
+        socket.emit('origin', {
             x: Math.round(pos[0] * 100) / 100,
             y: Math.round(pos[1] * 100) / 100,
             xv: posDelta[0],
-            yv: posDelta[1] 
+            yv: posDelta[1]
         })
     }
 
@@ -308,7 +292,7 @@ let rightclick = (e) => {
     let oldBlock = chunkPos(pos, offset, chunks);
     if (oldBlock != 0) return;
 
-    socket.emit('place',{pos: offset, slot: selectedIndex});
+    socket.emit('place', { pos: offset, slot: selectedIndex });
 }
 
 let dec2hex = (dec) => {
