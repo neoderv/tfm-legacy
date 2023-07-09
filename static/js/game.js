@@ -103,7 +103,7 @@ let loadChunk = async (pos, doStructures, doGravity, forceLoad) => {
     let chunk = save[index];
     if (!chunk || forceLoad) {
         chunk = save[index] = new Uint16Array(CHUNK_SIZE * CHUNK_SIZE);
-        
+
         let data = await fetch(`/api/save/${saveI}/${pos[0]}/${pos[1]}`).then(x => x.text())
 
         if (data && data !== 'nothing') {
@@ -218,7 +218,7 @@ let tick = async () => {
     let dist = Math.sqrt(posDeltaDelta[0] * posDeltaDelta[0] + posDeltaDelta[1] * posDeltaDelta[1])
 
     if (Math.abs(dist) > 0.001) {
-        socket.emit('move', { x: Math.round(posDeltaDelta[0] * 10000) / 10000, y: Math.round(posDeltaDelta[1] * 10000) / 10000 })
+        socket.emit('move', { x: Math.round(posDeltaDelta[0] * 1000000) / 1000000, y: Math.round(posDeltaDelta[1] * 1000000) / 1000000 })
     }
 
     if (doGravity || Math.abs(dist) > 0.5) {
